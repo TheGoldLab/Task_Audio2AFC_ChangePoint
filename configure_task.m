@@ -1,7 +1,7 @@
 function topNode =  configure_task(varargin)
 %% function topNode =  configure_task(varargin)
 %
-% This function sets up a Single Change Point Dots Reversal experiment. We
+% This function sets up an auditory change-point experiment. We
 % keep this logic separate from
 % running and cleaning up an experiment because we may want to decide
 % when/how do do those other things on the fly (e.g., add/subtract tasks
@@ -15,7 +15,7 @@ function topNode =  configure_task(varargin)
 % Returns:
 %  mainTreeNode ... the topsTreeNode at the top of the hierarchy
 %
-% 11/28/18   aer wrote it, based on DBSconfigure.m in
+% 04/02/19   aer wrote it, based on DBSconfigure.m in
 % Lab-Matlab-Control/tasks/DBSStudy/DBSconfigure.m
 
 %% ---- Parse arguments for configuration settings
@@ -39,7 +39,6 @@ settings = { ...
     'gazeWindowSize',             6, ...
     'gazeWindowDuration',         0.15, ...
     'saccadeDirections',          [0 180], ...
-    'dotDirections',              [0 180], ...
     'referenceRT',                500, ... % for speed feedback
     'showFeedback',               .5, ... % timeout for feedback
     'showSmileyFace',             .2, ...
@@ -143,7 +142,7 @@ for ii = 1:2:length(taskSpecs)
         {'timing',   'showFeedback'},       topNode.nodeData{'Settings'}{'showFeedback'}, ...
         {'timing',   'showSmileyFace'},     topNode.nodeData{'Settings'}{'showSmileyFace'}, ...
         'taskID',                           (ii+1)/2, ...
-        'taskTypeID',  find(strcmp(taskSpecs{ii}, {'Quest' 'CP'}),1)};
+        'taskTypeID',  find(strcmp(taskSpecs{ii}, {'NN'}),1)};
     
     % If there was a Quest task, use to update coherences in other tasks
     if ~isempty(QuestTask)
@@ -152,10 +151,8 @@ for ii = 1:2:length(taskSpecs)
             {'settings' 'referenceRT'}, QuestTask});
     end
     
-    % Make SingleCP_DotsReversal task with args
-    task = topsTreeNodeTaskSingleCPDotsReversal.getStandardConfiguration(args{:});
-    task.setIndependentVariableByName('initDirection', 'value', ...
-        topNode.nodeData{'Settings'}{'dotDirections'});
+    % Make Audio2AFCCP task with args
+    task = topsTreeNodeTaskAudio2AFCCP.getStandardConfiguration(args{:});
     
     % Add special instructions for first dots task
     if noDots

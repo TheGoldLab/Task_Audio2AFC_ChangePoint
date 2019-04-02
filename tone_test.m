@@ -4,5 +4,5 @@ clear
        %    duration  (sec)
        %    intensity (normalized)
 t=dotsPlayableTone.makePlayableTone([400; 1; .01]);
-t.side='right'; % can't check that with broken headphones yet.
+t.side='left'; % can't check that with broken headphones yet.
 t.play();

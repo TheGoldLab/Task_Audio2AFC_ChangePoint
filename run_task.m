@@ -1,12 +1,12 @@
 function topNode = run_task(location)
 %% function [mainTreeNode, datatub] = run_task(location)
 %
-% run_task = Single Change Point Dots
+% run_task = auditory change-point task
 %
-% This function configures, initializes, runs, and cleans up a SingleCP_DotsReversal
-%  experiment 
+% This function configures, initializes, runs, and cleans up an Audio2AFCCP 
+% task experiment 
 %
-% 11/28/18   aer wrote it
+% 04/02/19   aer wrote it
 
 %% ---- Clear globals
 %
@@ -29,9 +29,9 @@ clear globals
 switch location
     case {'pilot' 'Pilot'}
         arglist = { ...
-            'taskSpecs',            {'Quest' 100 'CP' 3}, ...%{'Quest' 50 'SN' 50 'AN' 50}, ...
+            'taskSpecs',            {'NN' 3}, ...%{'Quest' 50 'SN' 50 'AN' 50}, ...
             'readables',            {'dotsReadableHIDKeyboard'}, ...
-            'displayIndex',         2, ... % 0=small, 1=main, 2=other screen
+            'displayIndex',         0, ... % 0=small, 1=main, 2=other screen
             'remoteDrawing',        false, ...
             'sendTTLs',             false, ...
             'showFeedback',         0, ... % timeout for feedback
