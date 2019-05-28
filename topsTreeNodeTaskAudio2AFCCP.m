@@ -295,7 +295,7 @@ classdef topsTreeNodeTaskAudio2AFCCP < topsTreeNodeTask
             
             % Compute/save RT, wrt dotsOn for RT, dotsOff for non-RT
             if self.isRT
-                trial.RT = trial.choiceTime - trial.dotsOn;
+                trial.RT = trial.choiceTime - trial.soundOn;
             else
                 trial.RT = trial.choiceTime - trial.dotsOff;
             end
@@ -479,7 +479,7 @@ classdef topsTreeNodeTaskAudio2AFCCP < topsTreeNodeTask
                 [1 1 1], 1}, {'isVisible', true, 1}, {'isVisible', false, [2 3]}},  self, 'fixationOn'};
             showt   = {@draw, self.helpers.stimulusEnsemble, {2, []}, self, 'targetOn'};
             showfb  = {@showFeedback, self};
-            plays = {@play,self.helpers.audStimulusEnsemble.theObject, {1, []}, self, 'soundOn'};
+            plays = {@play,self.helpers.audStimulusEnsemble.theObject};
             hided   = {@draw,self.helpers.stimulusEnsemble, {[], 1}, self, 'fixationOff'};
             pdbr    = {@setNextState, self, 'isRT', 'preDots', 'playSound', 'done'};
             
