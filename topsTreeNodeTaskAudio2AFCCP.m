@@ -110,14 +110,20 @@ classdef topsTreeNodeTaskAudio2AFCCP < topsTreeNodeTask
             'fevalable',                  @dotsDrawableImages, ...
             'settings',                   struct( ...
             'fileNames',                  {{'smiley.jpg'}}, ...
-            'height',                     2)), ...
+            'height',                     2))));
+        
+        % Playables settings
+        playable = struct( ...
+            ...
+            ...   % Stimulus ensemble and settings
+            'audStimulusEnsemble',              struct( ...
             ...
             ...   % Sound settings
             'sound',                    struct( ...
             'fevalable',                  @dotsPlayableTone, ...
             'settings',                   struct( ...
-            'frequency',                  400,                ...
-            'duration',                   1,                ...
+            'frequency',                  500,                ...
+            'duration',                   .3,                ...
             'intensity',                  .1))));     
         
         % Readable settings
@@ -222,6 +228,7 @@ classdef topsTreeNodeTaskAudio2AFCCP < topsTreeNodeTask
             % ---- Prepare components
             %
             self.prepareDrawables();
+            self.preparePlayables();
             self.prepareStateMachine();
             
             % ---- Inactivate all of the readable events
@@ -408,15 +415,6 @@ classdef topsTreeNodeTaskAudio2AFCCP < topsTreeNodeTask
             trial.randSeedBase = randi(9999);
             self.setTrial(trial);
             
-            % ---- Save sound properties
-            %
-            if trial.direction == 0
-                side_str = 'right';
-            else % 180
-                side_str = 'left';
-            end
-            ensemble.setObjectProperty('side', side_str, 4);
-            
             % ---- Possibly update smiley face to location of correct target
             %
             if self.timing.showSmileyFace > 0
@@ -429,6 +427,32 @@ classdef topsTreeNodeTaskAudio2AFCCP < topsTreeNodeTask
             % ---- Prepare to draw dots stimulus
             %
 %             ensemble.callObjectMethod(@prepareToDrawInWindow);
+        end
+        
+        
+        %% Prepare drawables for this trial
+        %
+        function preparePlayables(self)
+            
+            % ---- Get the current trial and the stimulus ensemble
+            %
+            trial    = self.getTrial();
+            ensemble = self.helpers.audStimulusEnsemble.theObject;
+            
+            % ---- Save sound properties
+            %
+            if trial.direction == 0
+                side_str = 'right';
+            else % 180
+                side_str = 'left';
+            end
+            ensemble.side = side_str;
+                        
+            self.setTrial(trial);
+            
+            % ---- Prepare to draw dots stimulus
+            %
+            ensemble.prepareToPlay();
         end
         
         %% Prepare stateMachine for this trial
@@ -455,9 +479,9 @@ classdef topsTreeNodeTaskAudio2AFCCP < topsTreeNodeTask
                 [1 1 1], 1}, {'isVisible', true, 1}, {'isVisible', false, [2 3]}},  self, 'fixationOn'};
             showt   = {@draw, self.helpers.stimulusEnsemble, {2, []}, self, 'targetOn'};
             showfb  = {@showFeedback, self};
-            plays = {@play,self.helpers.stimulusEnsemble, {4, []}, self, 'soundOn'};
-            hided   = {@draw,self.helpers.stimulusEnsemble, {[], [1]}, self, 'fixationOff'};
-            pdbr    = {@setNextState, self, 'isRT', 'preDots', 'showDotsRT', 'showDotsFX'};
+            plays = {@play,self.helpers.audStimulusEnsemble.theObject, {1, []}, self, 'soundOn'};
+            hided   = {@draw,self.helpers.stimulusEnsemble, {[], 1}, self, 'fixationOff'};
+            pdbr    = {@setNextState, self, 'isRT', 'preDots', 'playSound', 'done'};
             
             % drift correction
             hfdc  = {@reset, self.helpers.reader.theObject, true};
@@ -477,7 +501,7 @@ classdef topsTreeNodeTaskAudio2AFCCP < topsTreeNodeTask
             %
             states = {...
                 'name'              'entry'  'input'  'timeout'          'exit'     'next'            ; ...
-                'showFixation'      showfx   {}       0                     pdbr    'waitForFixation' ; ...
+                'showFixation'      showfx   {}       0                     pdbr    'waitForFixation'    ; ...
                 'waitForFixation'   gwfxw    chkuif   t.fixationTimeout     {}      'blankNoFeedback' ; ...
                 'holdFixation'      gwfxh    chkuib   t.holdFixation        hfdc    'showTargets'     ; ...
                 'showTargets'       showt    chkuib   t.preDots             gwts    'preDots'         ; ...
