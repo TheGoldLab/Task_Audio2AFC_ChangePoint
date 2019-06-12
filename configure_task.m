@@ -79,7 +79,7 @@ topNode.addHelpers('feedback');
 % Add readable(s). See topsTaskHelperReadable for details.
 readables = topNode.nodeData{'Settings'}{'readables'};
 for ii = 1:length(readables)
-   theHelper = topNode.addReadable('readable', ...
+   topNode.addReadable('readable', ...
       topNode.nodeData{'Settings'}{'doRecording'}, ...
       topNode.nodeData{'Settings'}{'doCalibration'}, ...
       false, ... % this boolean value cooresponds to the doShow argument in topsTreeNodeTopNode.addReadable()
@@ -108,17 +108,13 @@ for index = 1:size(strs,1)
         break;
     end
 end
-welcome = {@show, topNode.helpers.feedback, 'text', strs(index, 2:3), ...
-    'showDuration', topNode.nodeData{'Settings'}{'instructionDuration'}};
 
 % Countdown call list
 callStrings = cell(10, 1);
 for ii = 1:10
     callStrings{ii} = {'string', sprintf('Next task starts in: %d', 10-ii+1), 'y', -9};
 end
-countdown = {@showMultiple, topNode.helpers.feedback, ...
-    'text', callStrings, 'image', {2, 'y', 4, 'height', 13}, ...
-    'showDuration', 1.0, 'pauseDuration', 0.0, 'blank', false};
+
 
 %% ---- Loop through the task specs array, making tasks with appropriate arg lists
 %

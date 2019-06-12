@@ -30,8 +30,6 @@ classdef topsTreeNodeTaskAudio2AFCCP < topsTreeNodeTask
         %     [val] ... use given fixed value
         %     [min mean max] ... specify as pick from exponential distribution
         settings = struct( ...
-            'useQuest',                   [],   ...
-            'coherencesFromQuest',        [],   ...
             'directionPriors',            [],   ... % put [80 20] for asymmetric priors for instance
             'referenceRT',                [],   ...
             'fixationRTDim',              0.4,  ...
@@ -43,6 +41,13 @@ classdef topsTreeNodeTaskAudio2AFCCP < topsTreeNodeTask
             'correctPlayableIndex',       3,    ...
             'errorPlayableIndex',         4);
         
+        % settings about the trial sequence to use
+        trialSettings = struct( ...
+            'numTrials',        400, ... % theoretical number of valid trials per block
+            'loadFromFile',     false,      ... % load trial sequence from files?
+            'csvFile',          '',         ... % file of the form filename.csv
+            'jsonFile',         '');        ... % file of the form filename_metadata.json
+            
         % Timing properties, referenced in statelist
         timing = struct( ...
             'showInstructions',          10.0, ...
@@ -57,15 +62,6 @@ classdef topsTreeNodeTaskAudio2AFCCP < topsTreeNodeTask
             'dotsTimeout',               5.0, ...
             'choiceTimeout',             3.0);
         
-        % Quest properties
-        questSettings = struct( ...
-            'stimRange',                 20*log10((0:100)/100),  	...
-            'thresholdRange',            20*log10((1:99)/100),     ...
-            'slopeRange',                1:5,      ...
-            'guessRate',                 0.5,      ...
-            'lapseRange',                0.00:0.01:0.05, ...
-            'recentGuess',               []);
-        
         % Fields below are optional but if found with the given names
         %  will be used to automatically configure the task
         
@@ -78,7 +74,8 @@ classdef topsTreeNodeTaskAudio2AFCCP < topsTreeNodeTask
         % dataFieldNames are used to set up the trialData structure
         trialDataFields = {'RT', 'choice', 'correct', 'direction', ...
             'randSeedBase', 'fixationOn', 'fixationStart', 'targetOn', ...
-            'soundOn', 'choiceTime', 'targetOff', 'fixationOff', 'feedbackOn'};
+            'soundOn', 'choiceTime', 'targetOff', 'fixationOff', ...
+            'feedbackOn', 'source'};
         
         % Drawables settings
         drawable = struct( ...
@@ -172,10 +169,9 @@ classdef topsTreeNodeTaskAudio2AFCCP < topsTreeNodeTask
     end
     
     properties (SetAccess = protected)
-        
-        % The quest object
-        quest;
-        
+        % Boolean flag, whether the trial is catch trial or not
+        isCatch;
+                
         % Boolean flag, whether an RT task or not
         isRT;
         
@@ -195,6 +191,78 @@ classdef topsTreeNodeTaskAudio2AFCCP < topsTreeNodeTask
             %
             self = self@topsTreeNodeTask(varargin{:});
         end
+        
+        %% Make trials (overloaded)
+        % this method exists in the super class, but for now, I reimplement
+        % it as I find it to be buggy in the superclass.
+        %
+        %  Utility to make trialData array using array of structs (independentVariables),
+        %     which must be a property of the given task with fields:
+        %
+        %     1. name: string name
+        %     2. values: vector of unique values
+        %     3. priors: vector of priors (or empty for equal priors)
+        %
+        %  trialIterations is number of repeats of each combination of
+        %     independent variables
+        %
+        function makeTrials(self, ~, ~)
+            trialsTable = ...
+                readtable(self.trialSettings.csvFile);
+            metaData = ...
+                loadjson(self.trialSettings.jsonFile);
+            
+            % set values that are common to all trials
+            self.trialSettings.numTrials = self.trialIterations;
+            ntr = self.trialSettings.numTrials;
+            
+            % produce copies of trialData struct to render it ntr x 1
+            self.trialData = repmat(self.trialData(1), ntr, 1);
+            
+            % taskID
+            [self.trialData.taskID] = deal(self.taskID);
+            
+            % condProbCP
+            [self.trialData.hazard] = ...
+                deal(metaData.hazard);
+            
+            % condProbCP
+            [self.trialData.meta_hazard] = ...
+                deal(metaData.meta_hazard);
+            
+            trlist = num2cell(1:ntr);
+            
+            % trialIndex
+            [self.trialData.trialIndex] = deal(trlist{:});
+            
+            % set values that are specific to each trial
+            for tr = 1:ntr
+                % sound location
+                if strcmp(trialsTable.soundLoc(tr), 'left')
+                    self.trialData(tr).direction = 180;
+                else
+                    self.trialData(tr).direction = 0;
+                end
+                
+                % source location
+                if strcmp(trialsTable.sourceLoc(tr), 'left')
+                    self.trialData(tr).source = 180;
+                else
+                    self.trialData(tr).source = 0;
+                end
+                
+                
+                % catch trial
+                if strcmp(trialsTable.catch(tr), 'True')
+                    self.trialData(tr).catch = 1.0; % numeric for FIRA
+                else
+                    self.trialData(tr).catch = 0;
+                end
+            end
+        end
+        
+        
+        
         
         %% Start task (overloaded)
         %
@@ -551,29 +619,29 @@ classdef topsTreeNodeTaskAudio2AFCCP < topsTreeNodeTask
             %
             task = topsTreeNodeTaskAudio2AFCCP(name, varargin{:});
             
-            % ---- Instruction settings, by column:
-            %  1. tag (first character of name)
-            %  2. Text string #1
-            %  3. RTFeedback flag
-            %
-            SATsettings = { ...
-                'S' 'Be as FAST as possible.'                 task.settings.referenceRT; ...
-                'A' 'Be as ACCURATE as possible.'             nan;...
-                'N' 'Be as FAST and ACCURATE as possible.'    nan};
-            
-            dp = task.settings.directionPriors;
-            BIASsettings = { ...
-                'L' 'Left is more likely.'                    [max(dp) min(dp)]; ...
-                'R' 'Right is more likely.'                   [min(dp) max(dp)]; ...
-                'N' 'Both directions are equally likely.'     [50 50]};
-                    
-            % ---- Set strings, priors based on type
-            %
-            Lsat  = strcmp(name(1), SATsettings(:,1));
-            Lbias = strcmp(name(2), BIASsettings(:,1));
-            task.settings.textStrings = {SATsettings{Lsat, 2}, BIASsettings{Lbias, 2}};
-            task.settings.referenceRT = SATsettings{Lsat, 3};
-%             task.setIndependentVariableByName('direction', 'priors', BIASsettings{Lbias, 3});
+%             % ---- Instruction settings, by column:
+%             %  1. tag (first character of name)
+%             %  2. Text string #1
+%             %  3. RTFeedback flag
+%             %
+%             SATsettings = { ...
+%                 'S' 'Be as FAST as possible.'                 task.settings.referenceRT; ...
+%                 'A' 'Be as ACCURATE as possible.'             nan;...
+%                 'N' 'Be as FAST and ACCURATE as possible.'    nan};
+%             
+%             dp = task.settings.directionPriors;
+%             BIASsettings = { ...
+%                 'L' 'Left is more likely.'                    [max(dp) min(dp)]; ...
+%                 'R' 'Right is more likely.'                   [min(dp) max(dp)]; ...
+%                 'N' 'Both directions are equally likely.'     [50 50]};
+%                     
+%             % ---- Set strings, priors based on type
+%             %
+%             Lsat  = strcmp(name(1), SATsettings(:,1));
+%             Lbias = strcmp(name(2), BIASsettings(:,1));
+%             task.settings.textStrings = {SATsettings{Lsat, 2}, BIASsettings{Lbias, 2}};
+%             task.settings.referenceRT = SATsettings{Lsat, 3};
+% %             task.setIndependentVariableByName('direction', 'priors', BIASsettings{Lbias, 3});
         end
     end
 end
