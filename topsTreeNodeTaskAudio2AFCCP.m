@@ -115,7 +115,7 @@ classdef topsTreeNodeTaskAudio2AFCCP < topsTreeNodeTask
             'fevalable',                  @dotsPlayableTone, ...
             'settings',                   struct( ...
             'frequency',                  500,                ...
-            'duration',                   .3,                ...
+            'duration',                   .3,                ... % 300 msec
             'intensity',                  .02))));     
         
         % Readable settings
@@ -512,7 +512,7 @@ classdef topsTreeNodeTaskAudio2AFCCP < topsTreeNodeTask
             % --- Show trial feedback in GUI/text window
             %
             self.statusStrings{2} = ...
-                sprintf('Trial %d/%d, dir=%d, coh=%.0f: %s, RT=%.2f', ...
+                sprintf('Trial %d/%d, dir=%d: %s, RT=%.2f', ...
                 self.trialCount, numel(self.trialData), ...
                 trial.direction, feedbackStr, trial.RT);
             self.updateStatus(2); % just update the second one
@@ -609,6 +609,17 @@ classdef topsTreeNodeTaskAudio2AFCCP < topsTreeNodeTask
             % ---- Set RT/deadline
             %
             self.isRT = true;
+        end
+        
+        %% shorten sound duration
+        function modifySound(self)
+            % get the sound object
+            self.helpers.audStimulusEnsemble.theObject.duration = .01; % 10 msec
+        end
+        
+        function resetSound(self)
+            % get the sound object
+            self.helpers.audStimulusEnsemble.theObject.duration = .3; % 300 msec
         end
         
         %% Initialize StateMachine
