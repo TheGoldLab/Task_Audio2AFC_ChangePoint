@@ -646,13 +646,13 @@ classdef topsTreeNodeTaskAudio2AFCCP < topsTreeNodeTask
             pdbr = {@setNextState, self, 'isCatch', 'playSound', 'catchSound', 'waitForChoiceFX'};
 
             % drift correction
-            hfdc  = {@reset, self.helpers.reader.theObject, true};
+%             hfdc  = {@reset, self.helpers.reader.theObject, true};
             
             % Activate/deactivate readable events
             sea   = @setEventsActiveFlag;
-            gwfxw = {sea, self.helpers.reader.theObject, 'holdFixation'};
-            gwfxh = {};
-            gwts  = {sea, self.helpers.reader.theObject, {'choseLeft', 'choseRight'}, 'holdFixation'};
+%             gwfxw = {sea, self.helpers.reader.theObject, 'holdFixation'};
+%             gwfxh = {};
+            gwts  = {sea, self.helpers.reader.theObject, {'choseLeft', 'choseRight'}};
             
             % ---- Timing variables, read directly from the timing property struct
             %
@@ -667,7 +667,7 @@ classdef topsTreeNodeTaskAudio2AFCCP < topsTreeNodeTask
 %                 'waitForFixation'   gwfxw    chkuif   t.fixationTimeout     {}      'blankNoFeedback' ; ...
 %                 'holdFixation'      gwfxh    chkuib   t.holdFixation        hfdc    'showTargets'     ; ...
 %                 'showTargets'       showt    chkuib  0                   gwts    'preDots'         ; ...
-                'preStim'           {}       {}       t.preStim             {}         'playSound'       ; ...
+                'preStim'           {}       {}       t.preStim             gwts       'playSound'       ; ...
                 'playSound'         plays    {}       t.dotsTimeout         mdfs       ''                ; ...
                 'catchSound'        plays    {}       t.dotsTimeout         rsts       'waitForChoiceFX' ; ...
                 'waitForChoiceFX'   hided    chkuic   t.choiceTimeout       {}         'blank'           ; ...
