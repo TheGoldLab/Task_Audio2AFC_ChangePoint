@@ -609,6 +609,7 @@ classdef topsTreeNodeTaskAudio2AFCCP < topsTreeNodeTask
             % ---- Set RT/deadline
             %
             self.isRT = true;
+            self.isReportTask = true;
         end
         
         %% shorten sound duration
@@ -621,7 +622,12 @@ classdef topsTreeNodeTaskAudio2AFCCP < topsTreeNodeTask
             % get the sound object
             self.helpers.audStimulusEnsemble.theObject.duration = .3; % 300 msec
         end
-        
+        function dispWaintingText1(self, stringarg)
+            self.helpers.feedback.show('text', ...
+                stringarg, ...
+                'showDuration', 3.5, ...
+                'blank', true);
+        end
         %% Initialize StateMachine
         %
         function initializeStateMachine(self)
@@ -639,12 +645,13 @@ classdef topsTreeNodeTaskAudio2AFCCP < topsTreeNodeTask
                 [1 1 1], 1}, {'isVisible', true, 1}, {'isVisible', false, [2 3]}},  self, 'fixationOn'};
 %             showt   = {@draw, self.helpers.stimulusEnsemble, {2, []}, self, 'targetOn'};
             showfb  = {@showFeedback, self};
-            plays = {@play,self.helpers.audStimulusEnsemble.theObject};
+            plays = {@startPlaying, self.helpers.audStimulusEnsemble, self, 'soundOn'};
             hided   = {@draw,self.helpers.stimulusEnsemble, {[], 1}, self, 'fixationOff'};
             mdfs = {@modifySound, self};
             rsts = {@resetSound, self};
             pdbr = {@setNextState, self, 'isCatch', 'playSound', 'catchSound', 'waitForChoiceFX'};
-
+            wtng = {@dispWaintingText1, self, 'waiting for response'};
+            gdby = {@dispWaintingText1, self, 'good bye'};
             % drift correction
 %             hfdc  = {@reset, self.helpers.reader.theObject, true};
             
@@ -668,9 +675,9 @@ classdef topsTreeNodeTaskAudio2AFCCP < topsTreeNodeTask
 %                 'holdFixation'      gwfxh    chkuib   t.holdFixation        hfdc    'showTargets'     ; ...
 %                 'showTargets'       showt    chkuib  0                   gwts    'preDots'         ; ...
                 'preStim'           {}       {}       t.preStim             gwts       'playSound'       ; ...
-                'playSound'         plays    {}       t.dotsTimeout         mdfs       ''                ; ...
+                'playSound'         plays    {}       0                     mdfs       ''                ; ...
                 'catchSound'        plays    {}       t.dotsTimeout         rsts       'waitForChoiceFX' ; ...
-                'waitForChoiceFX'   hided    chkuic   t.choiceTimeout       {}         'blank'           ; ...
+                'waitForChoiceFX'   {}     chkuic   t.choiceTimeout       {}       'blank'           ; ...
                 'waitForReleasFX'   hided    chkuic2  t.choiceTimeout       {}         ''                ; ...
                 'secondChoice'      hided    chkuic3  t.choiceTimeout       {}         'blank'           ; ...
                 'blank'             {}       {}       0.2                   blanks     'showFeedback'    ; ...
