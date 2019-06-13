@@ -6,29 +6,10 @@ classdef topsTreeNodeTaskAudio2AFCCP < topsTreeNodeTask
     % For standard configurations, call:
     %  topsTreeNodeTaskAudio2AFCCP.getStandardConfiguration
     %
-    % Otherwise:
-    %  1. Create an instance directly:
-    %        task = topsTreeNodeTaskAudio2AFCCP();
-    %
-    %  2. Set properties. These are required:
-    %        task.screenEnsemble
-    %        task.helpers.readers.theObject
-    %     Others can use defaults
-    %
-    %  3. Add this as a child to another topsTreeNode
-    %
-    % 04/02/19 created by aer 
+    % 06/13/19 created by aer 
  
     properties % (SetObservable) % uncomment if adding listeners
         
-        % Trial properties.
-        %
-        % Set useQuest to a handle to a topsTreeNodeTaskRTDots to use it
-        %     to get coherences
-        % Possible values of dotsDuration:
-        %     [] (default) ... RT task
-        %     [val] ... use given fixed value
-        %     [min mean max] ... specify as pick from exponential distribution
         settings = struct( ...
             'directionPriors',            [],   ... % put [80 20] for asymmetric priors for instance
             'referenceRT',                [],   ...
@@ -44,9 +25,9 @@ classdef topsTreeNodeTaskAudio2AFCCP < topsTreeNodeTask
         % settings about the trial sequence to use
         trialSettings = struct( ...
             'numTrials',        400, ... % theoretical number of valid trials per block
-            'loadFromFile',     false,      ... % load trial sequence from files?
-            'csvFile',          '',         ... % file of the form filename.csv
-            'jsonFile',         '');        ... % file of the form filename_metadata.json
+            'loadFromFile',     true,      ... % load trial sequence from files?
+            'csvFile',          'Blocks001/Block1.csv',  ... % file of the form filename.csv
+            'jsonFile',         'Blocks001/Block1_metadata.json');  ... % file of the form filename_metadata.json
             
         % Timing properties, referenced in statelist
         timing = struct( ...
@@ -57,7 +38,7 @@ classdef topsTreeNodeTaskAudio2AFCCP < topsTreeNodeTask
             'showSmileyFace',            0,   ...
             'showFeedback',              1.0, ...
             'interTrialInterval',        1.0, ...
-            'preDots',                   [0.2 0.5 1.0], ...
+            'preStim',                   .2,  ...%[0.2 0.5 1.0], ...
             'dotsDuration',              [],   ...
             'dotsTimeout',               5.0, ...
             'choiceTimeout',             3.0);
@@ -77,17 +58,19 @@ classdef topsTreeNodeTaskAudio2AFCCP < topsTreeNodeTask
             'choice', ...
             'correct', ...
             'direction', ...
+            'source', ...
+            'catch', ...
             'randSeedBase', ...
             'fixationOn', ...
             'fixationStart', ...
             'targetOn', ...
             'soundOn', ...
             'choiceTime', ...
+            'secondChoiceTime', ...
             'targetOff', ...
             'fixationOff', ...
             'feedbackOn', ...
-            'source', ...
-            'catch'};
+            'dirReleaseChoiceTime'};
         
         % Drawables settings
         drawable = struct( ...
@@ -102,8 +85,8 @@ classdef topsTreeNodeTaskAudio2AFCCP < topsTreeNodeTask
             'xCenter',                    0,                ...
             'yCenter',                    0,                ...
             'nSides',                     4,                ...
-            'width',                      1.0.*[1.0 0.1],   ...
-            'height',                     1.0.*[0.1 1.0],   ...
+            'width',                      3.0.*[1.0 0.1],   ...
+            'height',                     3.0.*[0.1 1.0],   ...
             'colors',                     [1 1 1])),        ...
             ...
             ...   % Targets drawable settings
@@ -133,7 +116,7 @@ classdef topsTreeNodeTaskAudio2AFCCP < topsTreeNodeTask
             'settings',                   struct( ...
             'frequency',                  500,                ...
             'duration',                   .3,                ...
-            'intensity',                  .01))));     
+            'intensity',                  .02))));     
         
         % Readable settings
         readable = struct( ...
@@ -162,9 +145,24 @@ classdef topsTreeNodeTaskAudio2AFCCP < topsTreeNodeTask
             ...   % Gamepad
             'dotsReadableHIDGamepad',     struct( ...
             'start',                      {{@defineEventsFromStruct, struct( ...
-            'name',                       {'holdFixation', 'choseLeft', 'choseRight'}, ...
-            'component',                  {'Button1', 'Trigger1', 'Trigger2'}, ...
-            'isRelease',                  {true, false, false})}}), ...
+            'name',                       {'holdFixation', ...  % A button
+                                            'choseLeft', ...    % left trigger
+                                            'choseRight', ...   % right trigger
+                                            'startTask', ...    % B button
+                                            'choseCP', ...      % X button
+                                            'choseNOCP'}, ...   % Y button
+            'component',                  {'Button1', ...  % button ID 3
+                                            'Trigger1', ...% button ID 7
+                                            'Trigger2', ...% button ID 8
+                                            'Button2', ... % button ID 4
+                                            'Button3', ... % button ID 5
+                                            'Button4'}, ...% button ID 6
+            'isRelease',                  {true, ...
+                                           false, ...
+                                           false, ...
+                                           false, ...
+                                           false, ...
+                                           false})}}), ...
             ...
             ...   % Ashwin's magic buttons
             'dotsReadableHIDButtons',     struct( ...
@@ -186,6 +184,8 @@ classdef topsTreeNodeTaskAudio2AFCCP < topsTreeNodeTask
                 
         % Boolean flag, whether an RT task or not
         isRT;
+        isReportTask;
+        isPredictionTask;
         
         % Check for changes in properties that require drawables to be
         %  recomputed
@@ -279,6 +279,16 @@ classdef topsTreeNodeTaskAudio2AFCCP < topsTreeNodeTask
         % Put stuff here that you want to do before each time you run this
         % task
         function startTask(self)
+            % manually add dummy events related to x and y directions of
+            % directional cross on gamepad
+            readableObj = self.helpers.reader.theObject;
+            if isa(readableObj,'dotsReadableHIDGamepad')
+                readableObj.defineEvent('x', 'component', 9);
+                readableObj.defineEvent('y', 'component', 10);
+            end
+            
+            self.trialIterationMethod = 'sequential';  % enforce sequential
+            self.randomizeWhenRepeating = false;
             
             % ---- Initialize the state machine
             %
@@ -286,9 +296,9 @@ classdef topsTreeNodeTaskAudio2AFCCP < topsTreeNodeTask
             
             % ---- Show task-specific instructions
             %
-            self.helpers.feedback.show('text', self.settings.textStrings, ...
-                'showDuration', self.timing.showInstructions);
-            pause(self.timing.waitAfterInstructions);
+%             self.helpers.feedback.show('text', self.settings.textStrings, ...
+%                 'showDuration', self.timing.showInstructions);
+%             pause(self.timing.waitAfterInstructions);
         end
         
         %% Finish task (overloaded)
@@ -323,8 +333,12 @@ classdef topsTreeNodeTaskAudio2AFCCP < topsTreeNodeTask
             
             % Trial information
             trial = self.getTrial();
-            trialString = sprintf('Trial %d/%d, dir=%d, coh=%.0f', self.trialCount, ...
-                numel(self.trialData), trial.direction);
+            
+            self.isCatch = trial.catch == 1;
+            
+            trialString = sprintf('Trial %d/%d, dir=%d, src=%d, catch=%d', ...
+                self.trialCount, numel(self.trialData), ...
+                trial.direction, trial.source, trial.catch);
             
             % Show the information
             self.statusStrings = {taskString, trialString};
@@ -352,13 +366,15 @@ classdef topsTreeNodeTaskAudio2AFCCP < topsTreeNodeTask
                 return
             end
             
-            % ---- Good choice!
-            %
-            % Override completedTrial flag
-            self.completedTrial = true;
-            
             % Jump to next state when done
-            nextState = 'blank';
+            if self.isCatch
+                % TO DO
+                nextState = 'waitForReleasFX';
+            else
+                nextState = 'blank';
+                % Override completedTrial flag
+                self.completedTrial = true;
+            end
             
             % Get current task/trial
             trial = self.getTrial();
@@ -367,15 +383,21 @@ classdef topsTreeNodeTaskAudio2AFCCP < topsTreeNodeTask
             trial.choice = double(strcmp(eventName, 'choseRight'));
             
             % Mark as correct/error
-            trial.correct = double( ...
-                (trial.choice==0 && trial.direction==180) || ...
-                (trial.choice==1 && trial.direction==0));
+            if self.isReportTask
+                trial.correct = double( ...
+                    (trial.choice==0 && trial.direction==180) || ...
+                    (trial.choice==1 && trial.direction==0));
+            elseif self.isPredictionTask
+                % get total num of trials
+                % check current trial is not the last one
+                % get source of next trial in queue
+                % compare answer to aforementioned source
+                % decide whether correct or not
+            end
             
             % Compute/save RT, wrt dotsOn for RT, dotsOff for non-RT
             if self.isRT
                 trial.RT = trial.choiceTime - trial.soundOn;
-            else
-                trial.RT = trial.choiceTime - trial.dotsOff;
             end
             
             % ---- Re-save the trial
@@ -383,10 +405,59 @@ classdef topsTreeNodeTaskAudio2AFCCP < topsTreeNodeTask
             self.setTrial(trial);
             
             % ---- Possibly show smiley face
+            if trial.correct == 1 && self.timing.showSmileyFace > 0 && ~self.isCatch
+                self.helpers.stimulusEnsemble.draw({3, [1 2 4]});
+                pause(self.timing.showSmileyFace);
+            end
+        end
+        
+        %% Check for catch choice
+        %
+        % Save choice/RT information and set up feedback for the dots task
+        function nextState = checkForCatchChoice(self, events, eventTag)
+            
+            % ---- Check for event
+            %
+            eventName = self.helpers.reader.readEvent(events, self, eventTag);
+            
+            % Nothing... keep checking
+            if isempty(eventName)
+                nextState = [];
+                return
+            end
+            
+            
+            nextState = 'blank';
+            % Override completedTrial flag
+            self.completedTrial = true;
+            
+            % ---- Possibly show smiley face
             if trial.correct == 1 && self.timing.showSmileyFace > 0
                 self.helpers.stimulusEnsemble.draw({3, [1 2 4]});
                 pause(self.timing.showSmileyFace);
             end
+        end
+        %% Check for direction choice trigger Release
+        %
+        % Save choice/RT information and set up feedback for the dots task
+        function nextState = checkForReleaseDirChoice(self, events, eventTag)
+            
+            % ---- Check for event
+            %
+%             self.helpers.reader.theObject.flushData()
+%             self.helpers.reader.theObject.setEventsActiveFlag(events)
+            eventName = self.helpers.reader.readEvent(events, self, eventTag);
+            
+            % Nothing... keep checking
+            if isempty(eventName)
+                nextState = [];
+                return
+            end
+            
+            % Jump to next state when done
+            nextState = 'secondChoice';
+
+            
         end
         
         %% Show feedback
@@ -526,7 +597,7 @@ classdef topsTreeNodeTaskAudio2AFCCP < topsTreeNodeTask
                         
             self.setTrial(trial);
             
-            % ---- Prepare to draw dots stimulus
+            % ---- Prepare to play audio stimulus
             %
             ensemble.prepareToPlay();
         end
@@ -537,7 +608,7 @@ classdef topsTreeNodeTaskAudio2AFCCP < topsTreeNodeTask
             
             % ---- Set RT/deadline
             %
-            self.isRT = isempty(self.timing.dotsDuration);
+            self.isRT = true;
         end
         
         %% Initialize StateMachine
@@ -548,17 +619,21 @@ classdef topsTreeNodeTaskAudio2AFCCP < topsTreeNodeTask
             %
             dnow    = {@drawnow};
             blanks  = {@dotsTheScreen.blankScreen};
-            chkuif  = {@getNextEvent, self.helpers.reader.theObject, false, {'holdFixation'}};
-            chkuib  = {}; % {@getNextEvent, self.readables.theObject, false, {}}; % {'brokeFixation'}
+%             chkuif  = {@getNextEvent, self.helpers.reader.theObject, false, {'holdFixation'}};
+%             chkuib  = {}; % {@getNextEvent, self.readables.theObject, false, {}}; % {'brokeFixation'}
             chkuic  = {@checkForChoice, self, {'choseLeft' 'choseRight'}, 'choiceTime'};
+            chkuic2  = {@checkForReleaseDirChoice, self, {'choseLeft' 'choseRight'}, 'dirReleaseChoiceTime'};
+            chkuic3  = {@checkForCatchChoice, self, {'choseLeft' 'choseRight'}, 'secondChoiceTime'};
             showfx  = {@draw, self.helpers.stimulusEnsemble, {{'colors', ...
                 [1 1 1], 1}, {'isVisible', true, 1}, {'isVisible', false, [2 3]}},  self, 'fixationOn'};
-            showt   = {@draw, self.helpers.stimulusEnsemble, {2, []}, self, 'targetOn'};
+%             showt   = {@draw, self.helpers.stimulusEnsemble, {2, []}, self, 'targetOn'};
             showfb  = {@showFeedback, self};
             plays = {@play,self.helpers.audStimulusEnsemble.theObject};
             hided   = {@draw,self.helpers.stimulusEnsemble, {[], 1}, self, 'fixationOff'};
-            pdbr    = {@setNextState, self, 'isRT', 'preDots', 'playSound', 'done'};
-            
+            mdfs = {@modifySound, self};
+            rsts = {@resetSound, self};
+            pdbr = {@setNextState, self, 'isCatch', 'playSound', 'catchSound', 'waitForChoiceFX'};
+
             % drift correction
             hfdc  = {@reset, self.helpers.reader.theObject, true};
             
@@ -576,18 +651,21 @@ classdef topsTreeNodeTaskAudio2AFCCP < topsTreeNodeTask
             %        stateMachine (in topsTreeNode)
             %
             states = {...
-                'name'              'entry'  'input'  'timeout'          'exit'     'next'            ; ...
-                'showFixation'      showfx   {}       0                     pdbr    'waitForFixation'    ; ...
-                'waitForFixation'   gwfxw    chkuif   t.fixationTimeout     {}      'blankNoFeedback' ; ...
-                'holdFixation'      gwfxh    chkuib   t.holdFixation        hfdc    'showTargets'     ; ...
-                'showTargets'       showt    chkuib   t.preDots             gwts    'preDots'         ; ...
-                'preDots'            {}       {}       0                     {}      'playSound'      ; ...
-                'playSound'         plays    chkuic   t.dotsTimeout         {}    'waitForChoiceFX' ; ...
-                'waitForChoiceFX'   hided    chkuic   t.choiceTimeout       {}      'blank'           ; ...
-                'blank'             {}       {}       0.2                   blanks  'showFeedback'    ; ...
-                'showFeedback'      showfb   {}       t.showFeedback        blanks  'done'            ; ...
-                'blankNoFeedback'   {}       {}       0                     blanks  'done'            ; ...
-                'done'              dnow     {}       t.interTrialInterval  {}      ''                ; ...
+                'name'              'entry'  'input'  'timeout'             'exit'     'next'            ; ...
+                'showFixation'      showfx   {}       0                     pdbr       'preStim'         ; ...
+%                 'waitForFixation'   gwfxw    chkuif   t.fixationTimeout     {}      'blankNoFeedback' ; ...
+%                 'holdFixation'      gwfxh    chkuib   t.holdFixation        hfdc    'showTargets'     ; ...
+%                 'showTargets'       showt    chkuib  0                   gwts    'preDots'         ; ...
+                'preStim'           {}       {}       t.preStim             {}         'playSound'       ; ...
+                'playSound'         plays    {}       t.dotsTimeout         mdfs       ''                ; ...
+                'catchSound'        plays    {}       t.dotsTimeout         rsts       'waitForChoiceFX' ; ...
+                'waitForChoiceFX'   hided    chkuic   t.choiceTimeout       {}         'blank'           ; ...
+                'waitForReleasFX'   hided    chkuic2  t.choiceTimeout       {}         ''                ; ...
+                'secondChoice'      hided    chkuic3  t.choiceTimeout       {}         'blank'           ; ...
+                'blank'             {}       {}       0.2                   blanks     'showFeedback'    ; ...
+                'showFeedback'      showfb   {}       t.showFeedback        blanks     'done'            ; ...
+                'blankNoFeedback'   {}       {}       0                     blanks     'done'            ; ...
+                'done'              dnow     {}       t.interTrialInterval  {}         ''                ; ...
                 };
             
             % ---- Set up ensemble activation list. This determines which
