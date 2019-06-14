@@ -476,11 +476,17 @@ classdef topsTreeNodeTaskAudio2AFCCP < topsTreeNodeTask
             % Override completedTrial flag
             self.completedTrial = true;
             
+            trial = self.getTrial();
+            
+            % COMPUTE correct TRIAL
+            % HERE
+            %
             % ---- Possibly show smiley face
             if trial.correct == 1 && self.timing.showSmileyFace > 0
                 self.helpers.stimulusEnsemble.draw({3, [1 2 4]});
                 pause(self.timing.showSmileyFace);
             end
+            
         end
         %% Check for direction choice trigger Release
         %
@@ -732,7 +738,7 @@ classdef topsTreeNodeTaskAudio2AFCCP < topsTreeNodeTask
                 'showFixation'      showfx   {}       t.preStim             gwts       'playSound'       ; ...
                 'playSound'         plays1   {}       0                     mdfs       'earlyEvents'     ; ...
                 'earlyEvents'       evtwrn   {}       0                     {}         ''                ; ...
-                'catchSound'        plays2   {}       t.dotsTimeout         rsts       'waitForChoiceFX' ; ...
+                'catchSound'        plays2   {}       0                     rsts       'waitForChoiceFX' ; ...
                 'waitForChoiceFX'   shfxb    chkuic   t.choiceTimeout       {}         'blank'           ; ...
                 'waitForReleasFX'   hided    chkuic2  t.choiceTimeout       dque       ''                ; ...
                 'secondChoice'      hided    chkuic3  t.choiceTimeout       {}         'blank'           ; ...
