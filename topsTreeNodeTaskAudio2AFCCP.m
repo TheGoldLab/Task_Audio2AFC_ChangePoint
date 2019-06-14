@@ -352,6 +352,40 @@ classdef topsTreeNodeTaskAudio2AFCCP < topsTreeNodeTask
         function finishTrial(self)
         end
         
+        function earlyEventWarning(self, events)
+            eventName = self.helpers.reader.readEvent(events, self, 'choiceTime');
+%             disp(eventName)
+            if ~isempty(eventName)
+                
+                % Get current task/trial
+                trial = self.getTrial();
+                trial.RT = trial.choiceTime - trial.sound1Off;
+                % Save the choice
+                trial.choice = double(strcmp(eventName, 'choseRight'));
+                % ---- Re-save the trial
+                self.setTrial(trial);
+                
+                self.stateMachine.editStateByName('earlyEvents', 'next', 'blankNoFeedback');
+                
+                pause(0.1)
+                
+                self.helpers.feedback.show('text', ...
+                    {'You answered too soon.', ...
+                    'Please wait until the cross turns blue.'}, ...
+                    'showDuration', 4, ...
+                    'blank', true);
+            else
+%                 disp('entered no early event case')
+                if self.isCatch
+                    self.stateMachine.editStateByName('earlyEvents', 'next', 'catchSound');
+                else
+                    self.stateMachine.editStateByName('earlyEvents', 'next', 'waitForChoiceFX');
+                end
+            end
+                      
+            self.flushEventsQueue()
+        end
+        
         %% Check for choice
         %
         % Save choice/RT information and set up feedback for the dots task
@@ -367,10 +401,12 @@ classdef topsTreeNodeTaskAudio2AFCCP < topsTreeNodeTask
                 return
             end
             
-            % Get current task/trial
             trial = self.getTrial();
             trial.RT = trial.choiceTime - trial.sound1Off;
+            trial.choice = double(strcmp(eventName, 'choseRight'));
+            
             if trial.RT < 0 || isnan(trial.RT)
+                % this whole block should be redundant now
                 nextState = 'waitForReleasFX';
                 pause(0.1)
                 self.helpers.feedback.show('text', ...
@@ -408,8 +444,7 @@ classdef topsTreeNodeTaskAudio2AFCCP < topsTreeNodeTask
                 end
             end
             
-            % Save the choice
-            trial.choice = double(strcmp(eventName, 'choseRight'));
+
                   
             % ---- Re-save the trial
             %
@@ -637,9 +672,12 @@ classdef topsTreeNodeTaskAudio2AFCCP < topsTreeNodeTask
         end
         
         function flushEventsQueue(self)
+%             disp('flushing event queue')
             [nextEvent, ~] = self.helpers.reader.theObject.getNextEvent();
+%             disp(nextEvent)
             while ~isempty(nextEvent)
                 [nextEvent, ~] = self.helpers.reader.theObject.getNextEvent();
+%                 disp(nextEvent)
             end
         end
         
@@ -664,7 +702,7 @@ classdef topsTreeNodeTaskAudio2AFCCP < topsTreeNodeTask
             hided   = {@draw,self.helpers.stimulusEnsemble, {[], 1}, self, 'fixationOff'};
             mdfs = {@modifySound, self};
             rsts = {@resetSound, self};
-            pdbr = {@setNextState, self, 'isCatch', 'playSound', 'catchSound', 'waitForChoiceFX'};
+%             pdbr = {@setNextState, self, 'isCatch', 'playSound', 'catchSound', 'waitForChoiceFX'};
             wtng = {@dispWaintingText1, self, 'waiting for response'};
             gdby = {@dispWaintingText1, self, 'good bye'};
             % drift correction
@@ -677,6 +715,7 @@ classdef topsTreeNodeTaskAudio2AFCCP < topsTreeNodeTask
             gwts  = {sea, self.helpers.reader.theObject, {'choseLeft', 'choseRight'}};
             flsh = {@flushData, self.helpers.reader.theObject};
             dque = {@flushEventsQueue, self};
+            evtwrn = {@earlyEventWarning, self, {'choseLeft', 'choseRight'}};
             % ---- Timing variables, read directly from the timing property struct
             %
             t = self.timing;
@@ -686,17 +725,14 @@ classdef topsTreeNodeTaskAudio2AFCCP < topsTreeNodeTask
             %
             states = {...
                 'name'              'entry'  'input'  'timeout'             'exit'     'next'            ; ...
-                'showFixation'      showfx   {}       0                     pdbr       'preStim'         ; ...
-%                 'waitForFixation'   gwfxw    chkuif   t.fixationTimeout     {}      'blankNoFeedback' ; ...
-%                 'holdFixation'      gwfxh    chkuib   t.holdFixation        hfdc    'showTargets'     ; ...
-%                 'showTargets'       showt    chkuib  0                   gwts    'preDots'         ; ...
-                'preStim'           {}       {}       t.preStim             gwts       'playSound'       ; ...
-                'playSound'         plays1   {}       0                     mdfs       ''                ; ...
+                'showFixation'      showfx   {}       t.preStim             gwts       'playSound'       ; ...
+                'playSound'         plays1   {}       0                     mdfs       'earlyEvents'     ; ...
+                'earlyEvents'       evtwrn   {}       0                     {}         ''                ; ...
                 'catchSound'        plays2   {}       t.dotsTimeout         rsts       'waitForChoiceFX' ; ...
-                'waitForChoiceFX'   shfxb    chkuic   t.choiceTimeout       {}         'waitForReleasFx' ; ...
+                'waitForChoiceFX'   shfxb    chkuic   t.choiceTimeout       {}         'blank'           ; ...
                 'waitForReleasFX'   hided    chkuic2  t.choiceTimeout       dque       ''                ; ...
                 'secondChoice'      hided    chkuic3  t.choiceTimeout       {}         'blank'           ; ...
-                'blank'             hided    {}       0.2                   dque       'showFeedback'    ; ...
+                'blank'             hided    {}       0.2                   {}         'showFeedback'    ; ...
                 'showFeedback'      showfb   {}       t.showFeedback        blanks     'done'            ; ...
                 'blankNoFeedback'   {}       {}       0                     blanks     'done'            ; ...
                 'done'              dnow     {}       t.interTrialInterval  {}         ''                ; ...
