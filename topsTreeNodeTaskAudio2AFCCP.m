@@ -366,9 +366,12 @@ classdef topsTreeNodeTaskAudio2AFCCP < topsTreeNodeTask
                 self.setTrial(trial);
                 
                 self.stateMachine.editStateByName('earlyEvents', 'next', 'blankNoFeedback');
-                
+%                 self.stateMachine.editStateByName('earlyEvents', 'exit', ...
+%                 {@draw,self.helpers.stimulusEnsemble, {[], 1}, self, 'fixationOff'});
+            
                 pause(0.1)
                 
+                self.helpers.stimulusEnsemble.draw({[], 1}, self, 'fixationOff');
                 self.helpers.feedback.show('text', ...
                     {'You answered too soon.', ...
                     'Please wait until the cross turns blue.'}, ...
@@ -381,6 +384,7 @@ classdef topsTreeNodeTaskAudio2AFCCP < topsTreeNodeTask
                 else
                     self.stateMachine.editStateByName('earlyEvents', 'next', 'waitForChoiceFX');
                 end
+%                 self.stateMachine.editStateByName('earlyEvents', 'exit', {});
             end
                       
             self.flushEventsQueue()
