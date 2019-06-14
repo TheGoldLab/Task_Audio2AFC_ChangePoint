@@ -367,48 +367,54 @@ classdef topsTreeNodeTaskAudio2AFCCP < topsTreeNodeTask
                 return
             end
             
-            % Jump to next state when done
-            if self.isCatch
-                % TO DO
-                nextState = 'waitForReleasFX';
-            else
-                nextState = 'blank';
-                % Override completedTrial flag
-                self.completedTrial = true;
-            end
-            
             % Get current task/trial
             trial = self.getTrial();
+            trial.RT = trial.choiceTime - trial.sound1Off;
+            if trial.RT < 0 || isnan(trial.RT)
+                nextState = 'waitForReleasFX';
+                pause(0.1)
+                self.helpers.feedback.show('text', ...
+                    {'You answered too soon.', ...
+                     'Please wait until the cross turns blue.'}, ...
+                     'showDuration', 4, ...
+                     'blank', true);
+            else
+                % Jump to next state when done
+                if self.isCatch
+                    % TO DO
+                    nextState = 'waitForReleasFX';
+                else
+                    nextState = 'blank';
+                    % Override completedTrial flag
+                    self.completedTrial = true;
+                end
+                
+                % Mark as correct/error
+                if self.isReportTask
+                    trial.correct = double( ...
+                        (trial.choice==0 && trial.direction==180) || ...
+                        (trial.choice==1 && trial.direction==0));
+                elseif self.isPredictionTask
+                    % get total num of trials
+                    % check current trial is not the last one
+                    % get source of next trial in queue
+                    % compare answer to aforementioned source
+                    % decide whether correct or not
+                end
+                % ---- Possibly show smiley face
+                if trial.correct == 1 && self.timing.showSmileyFace > 0 && ~self.isCatch
+                    self.helpers.stimulusEnsemble.draw({3, [1 2 4]});
+                    pause(self.timing.showSmileyFace);
+                end
+            end
             
             % Save the choice
             trial.choice = double(strcmp(eventName, 'choseRight'));
-            
-            % Mark as correct/error
-            if self.isReportTask
-                trial.correct = double( ...
-                    (trial.choice==0 && trial.direction==180) || ...
-                    (trial.choice==1 && trial.direction==0));
-            elseif self.isPredictionTask
-                % get total num of trials
-                % check current trial is not the last one
-                % get source of next trial in queue
-                % compare answer to aforementioned source
-                % decide whether correct or not
-            end
-            
-
-            trial.RT = trial.choiceTime - trial.sound1Off;
-
-            
+                  
             % ---- Re-save the trial
             %
             self.setTrial(trial);
-            
-            % ---- Possibly show smiley face
-            if trial.correct == 1 && self.timing.showSmileyFace > 0 && ~self.isCatch
-                self.helpers.stimulusEnsemble.draw({3, [1 2 4]});
-                pause(self.timing.showSmileyFace);
-            end
+
         end
         
         %% Check for catch choice
@@ -455,9 +461,11 @@ classdef topsTreeNodeTaskAudio2AFCCP < topsTreeNodeTask
             end
             
             % Jump to next state when done
-            nextState = 'secondChoice';
-
-            
+            if self.isCatch
+                nextState = 'secondChoice';
+            else
+                nextState = 'blank';
+            end
         end
         
         %% Show feedback
@@ -627,6 +635,14 @@ classdef topsTreeNodeTaskAudio2AFCCP < topsTreeNodeTask
                 'showDuration', 3.5, ...
                 'blank', true);
         end
+        
+        function flushEventsQueue(self)
+            [nextEvent, ~] = self.helpers.reader.theObject.getNextEvent();
+            while ~isempty(nextEvent)
+                [nextEvent, ~] = self.helpers.reader.theObject.getNextEvent();
+            end
+        end
+        
         %% Initialize StateMachine
         %
         function initializeStateMachine(self)
@@ -659,7 +675,8 @@ classdef topsTreeNodeTaskAudio2AFCCP < topsTreeNodeTask
 %             gwfxw = {sea, self.helpers.reader.theObject, 'holdFixation'};
 %             gwfxh = {};
             gwts  = {sea, self.helpers.reader.theObject, {'choseLeft', 'choseRight'}};
-            
+            flsh = {@flushData, self.helpers.reader.theObject};
+            dque = {@flushEventsQueue, self};
             % ---- Timing variables, read directly from the timing property struct
             %
             t = self.timing;
@@ -676,10 +693,10 @@ classdef topsTreeNodeTaskAudio2AFCCP < topsTreeNodeTask
                 'preStim'           {}       {}       t.preStim             gwts       'playSound'       ; ...
                 'playSound'         plays1   {}       0                     mdfs       ''                ; ...
                 'catchSound'        plays2   {}       t.dotsTimeout         rsts       'waitForChoiceFX' ; ...
-                'waitForChoiceFX'   shfxb    chkuic   t.choiceTimeout       {}         'blank'           ; ...
-                'waitForReleasFX'   hided    chkuic2  t.choiceTimeout       {}         ''                ; ...
+                'waitForChoiceFX'   shfxb    chkuic   t.choiceTimeout       {}         'waitForReleasFx' ; ...
+                'waitForReleasFX'   hided    chkuic2  t.choiceTimeout       dque       ''                ; ...
                 'secondChoice'      hided    chkuic3  t.choiceTimeout       {}         'blank'           ; ...
-                'blank'             hided    {}       0.2                   {}         'showFeedback'    ; ...
+                'blank'             hided    {}       0.2                   dque       'showFeedback'    ; ...
                 'showFeedback'      showfb   {}       t.showFeedback        blanks     'done'            ; ...
                 'blankNoFeedback'   {}       {}       0                     blanks     'done'            ; ...
                 'done'              dnow     {}       t.interTrialInterval  {}         ''                ; ...
