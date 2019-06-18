@@ -678,13 +678,15 @@ classdef topsTreeNodeTaskAudio2AFCCP < topsTreeNodeTask
         function modifySound(self)
             % get the sound object
             if self.isCatch
-                self.helpers.audStimulusEnsemble.theObject.duration = .01; % 10 msec
+                self.helpers.audStimulusEnsemble.theObject.duration = .05; % 50 msec
+                self.helpers.audStimulusEnsemble.theObject.prepareToPlay();
             end
         end
         
         function resetSound(self)
             % get the sound object
             self.helpers.audStimulusEnsemble.theObject.duration = .3; % 300 msec
+            self.helpers.audStimulusEnsemble.theObject.prepareToPlay();
         end
         function dispWaintingText1(self, stringarg)
             self.helpers.feedback.show('text', ...
