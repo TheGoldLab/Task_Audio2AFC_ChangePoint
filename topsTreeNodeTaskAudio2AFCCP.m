@@ -235,13 +235,13 @@ classdef topsTreeNodeTaskAudio2AFCCP < topsTreeNodeTask
             % taskID
             [self.trialData.taskID] = deal(self.taskID);
             
-            % condProbCP
-            [self.trialData.hazard] = ...
-                deal(metaData.hazard);
-            
-            % condProbCP
-            [self.trialData.meta_hazard] = ...
-                deal(metaData.meta_hazard);
+%             % condProbCP
+%             [self.trialData.hazard] = ...
+%                 deal(metaData.hazard);
+%             
+%             % condProbCP
+%             [self.trialData.meta_hazard] = ...
+%                 deal(metaData.meta_hazard);
             
             trlist = num2cell(1:ntr);
             
@@ -584,8 +584,10 @@ classdef topsTreeNodeTaskAudio2AFCCP < topsTreeNodeTask
             
             % --- Show trial feedback on the screen
             %
-            dotsTheScreen.blankScreen(feedbackColor);
-            self.helpers.feedback.show(feedbackArgs{:});
+            if self.timing.showSmileyFace > 0
+                dotsTheScreen.blankScreen(feedbackColor);
+                self.helpers.feedback.show(feedbackArgs{:});
+            end
             dotsTheScreen.blankScreen([0 0 0]);
         end
     end
