@@ -453,7 +453,7 @@ classdef topsTreeNodeTaskAudio2AFCCP < topsTreeNodeTask
                     else
                         % get sound of next trial in queue
                         nextTrial = self.getTrial(trial.trialIndex + 1);
-                        disp(nextTrial.direction)
+%                         disp(nextTrial.direction)
                         % compare answer to aforementioned source
                         % decide whether correct or not 
                         trial.correct = double( ...
