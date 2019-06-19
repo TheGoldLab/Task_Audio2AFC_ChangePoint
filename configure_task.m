@@ -42,7 +42,8 @@ settings = { ...
     'referenceRT',                500, ... % for speed feedback
     'showFeedback',               .5, ... % timeout for feedback
     'showSmileyFace',             .2, ...
-    'trialFolder',                ''};
+    'trialFolder',                '', ...
+    'isReport',                   true};
 
 % Update from argument list (property/value pairs)
 for ii = 1:2:nargin
@@ -152,6 +153,7 @@ for ii = 1:2:length(taskSpecs)
     task.trialSettings.numTrials = taskSpecs{ii+1};
     task.trialSettings.csvFile = [trial_folder, taskSpecs{ii}, '.csv'];
     task.trialSettings.jsonFile = [trial_folder, taskSpecs{ii}, '_metadata.json'];
+    task.setReportProperty(topNode.nodeData{'Settings'}{'isReport'})
     
     % Add as child to the maintask.
     topNode.addChild(task);

@@ -206,6 +206,11 @@ classdef topsTreeNodeTaskAudio2AFCCP < topsTreeNodeTask
             self = self@topsTreeNodeTask(varargin{:});
         end
         
+        
+        function setReportProperty(self, boolVal)
+            self.isReportTask = boolVal;
+        end
+        
         %% Make trials (overloaded)
         % this method exists in the super class, but for now, I reimplement
         % it as I find it to be buggy in the superclass.
@@ -405,10 +410,13 @@ classdef topsTreeNodeTaskAudio2AFCCP < topsTreeNodeTask
                 nextState = [];
                 return
             end
+            % get total num of trials
+            totNumTrials = numel(self.trialData);
             
             trial = self.getTrial();
             trial.RT = trial.choiceTime - trial.sound1Off;
             trial.choice = double(strcmp(eventName, 'choseRight'));
+            lastTrial = trial.trialIndex == totNumTrials;
             
             if trial.RT < 0 || isnan(trial.RT)
                 % this whole block should be redundant now
@@ -435,18 +443,17 @@ classdef topsTreeNodeTaskAudio2AFCCP < topsTreeNodeTask
                         (trial.choice==0 && trial.direction==180) || ...
                         (trial.choice==1 && trial.direction==0));
                 else
-                    % get total num of trials
-                    totNumTrials = numel(self.trialData);
+                    
                     
                     % check current trial is not the last one
-                    if trial.trialIndex == totNumTrials
+                    if lastTrial
                         % last trial shoud not be included percent correct calculations
                         % would nan be more appropriate?
                         trial.correct = 0;  
                     else
                         % get sound of next trial in queue
                         nextTrial = self.getTrial(trial.trialIndex + 1);
-                        
+                        disp(nextTrial.direction)
                         % compare answer to aforementioned source
                         % decide whether correct or not 
                         trial.correct = double( ...
@@ -454,11 +461,18 @@ classdef topsTreeNodeTaskAudio2AFCCP < topsTreeNodeTask
                             (trial.choice==1 && nextTrial.direction==0));  
                     end
                 end
-                % ---- Possibly show smiley face
-                if trial.correct == 1 && self.timing.showSmileyFace > 0 && ~self.isCatch
-                    self.helpers.stimulusEnsemble.draw({3, [1 2 4]});
-                    pause(self.timing.showSmileyFace);
-                end
+%                 % ---- Possibly show smiley face
+%                 if (trial.correct == 1) ...
+%                         && (self.timing.showSmileyFace > 0) ...
+%                         && (~self.isCatch) ...
+%                         && (self.isReportTask || ...
+%                         (~self.isReportTask && ~lastTrial))
+%                     
+%                     self.helpers.stimulusEnsemble.draw( ...
+%                         {'isVisible', true, 3}, ...
+%                         {'isVisible', false, [1 2 4]});
+%                     pause(self.timing.showSmileyFace);
+%                 end
             end
             
 
@@ -506,13 +520,18 @@ classdef topsTreeNodeTaskAudio2AFCCP < topsTreeNodeTask
                     'showDuration', 4, ...
                     'blank', true);
             end
-            %
-            % ---- Possibly show smiley face
-            if trial.correct == 1 && self.timing.showSmileyFace > 0
-                self.helpers.stimulusEnsemble.draw({3, [1 2 4]});
-                pause(self.timing.showSmileyFace);
-            end
             
+%             totTrials = numel(self.trialData);
+%             isLastTrial = (totTrials == trial.trialIndex);
+%             skipFb = ~self.isReportTask && isLastTrial;  
+%             
+%             % ---- Possibly show smiley face
+%             if trial.correct == 1 && self.timing.showSmileyFace > 0 ...
+%                     && ~skipFb
+%                 self.helpers.stimulusEnsemble.draw({3, [1 2 4]});
+%                 pause(self.timing.showSmileyFace);
+%             end
+%             
         end
         %% Check for direction choice trigger Release
         %
@@ -573,18 +592,21 @@ classdef topsTreeNodeTaskAudio2AFCCP < topsTreeNodeTask
                 feedbackStr = 'Correct';
                 feedbackArgs = { ...
                     'text',  [feedbackStr RTstr], ...
-                    'image', imageIndex};
+                    'image', imageIndex, ...
+                    'eventTag', 'feedbackOn'};
                 feedbackColor = [0 0.6 0];
 
             elseif trial.correct == 0
                 feedbackStr = 'Error';
                 feedbackArgs = { ...
                     'text',  [feedbackStr RTstr], ...
-                    'image', self.settings.errorImageIndex};
+                    'image', self.settings.errorImageIndex, ...
+                    'eventTag', 'feedbackOn'};
                 feedbackColor = [1 0 0];
             else
                 feedbackStr = 'No choice';
-                feedbackArgs = {'text', 'No choice, please try again.'};
+                feedbackArgs = {'text', 'No choice, please try again.', ...
+                    'eventTag', 'feedbackOn'};
                 feedbackColor = [0 0 0];
             end
             
@@ -596,9 +618,28 @@ classdef topsTreeNodeTaskAudio2AFCCP < topsTreeNodeTask
                 trial.direction, feedbackStr, trial.RT);
             self.updateStatus(2); % just update the second one
             
+           
+            totTrials = numel(self.trialData);
+            isLastTrial = (totTrials == trial.trialIndex);
+            skipFb = ~self.isReportTask && isLastTrial;
+            
+%             % ---- Possibly show smiley face
+%             if (trial.correct == 1) ...
+%                     && (self.timing.showSmileyFace > 0) ...
+%                     && (~self.isCatch) ...
+%                     && (self.isReportTask || ...
+%                     (~self.isReportTask && ~lastTrial))
+%                 
+%                 self.helpers.stimulusEnsemble.draw( ...
+%                     {'isVisible', true, 3}, ...
+%                     {'isVisible', false, [1 2 4]});
+%                 pause(self.timing.showSmileyFace);
+%             end
+            
+            
             % --- Show trial feedback on the screen
             %
-            if self.timing.showSmileyFace > 0
+            if self.timing.showSmileyFace > 0 && ~skipFb
                 dotsTheScreen.blankScreen(feedbackColor);
                 self.helpers.feedback.show(feedbackArgs{:});
             end
@@ -686,8 +727,6 @@ classdef topsTreeNodeTaskAudio2AFCCP < topsTreeNodeTask
         %% Prepare stateMachine for this trial
         %
         function prepareStateMachine(self)
-            
-            self.isReportTask = true;
         end
         
         %% shorten sound duration
