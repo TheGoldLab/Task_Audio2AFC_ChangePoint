@@ -185,8 +185,9 @@ classdef topsTreeNodeTaskAudio2AFCCP < topsTreeNodeTask
         % Boolean flag, whether the trial is catch trial or not
         isCatch;
                 
-        isReportTask;
-        isPredictionTask;
+        % if false, then task is prediction task about the next sound location
+        % if true, then task is report the location of the last sound
+        isReportTask;  
         
         % Check for changes in properties that require drawables to be
         %  recomputed
@@ -222,8 +223,8 @@ classdef topsTreeNodeTaskAudio2AFCCP < topsTreeNodeTask
         function makeTrials(self, ~, ~)
             trialsTable = ...
                 readtable(self.trialSettings.csvFile);
-            metaData = ...
-                loadjson(self.trialSettings.jsonFile);
+%             metaData = ...
+%                 loadjson(self.trialSettings.jsonFile);
             
             % set values that are common to all trials
             self.trialSettings.numTrials = self.trialIterations;
@@ -433,12 +434,25 @@ classdef topsTreeNodeTaskAudio2AFCCP < topsTreeNodeTask
                     trial.correct = double( ...
                         (trial.choice==0 && trial.direction==180) || ...
                         (trial.choice==1 && trial.direction==0));
-                elseif self.isPredictionTask
+                else
                     % get total num of trials
+                    totNumTrials = numel(self.trialData);
+                    
                     % check current trial is not the last one
-                    % get source of next trial in queue
-                    % compare answer to aforementioned source
-                    % decide whether correct or not
+                    if trial.trialIndex == totNumTrials
+                        % last trial shoud not be included percent correct calculations
+                        % would nan be more appropriate?
+                        trial.correct = 0;  
+                    else
+                        % get sound of next trial in queue
+                        nextTrial = self.getTrial(trial.trialIndex + 1);
+                        
+                        % compare answer to aforementioned source
+                        % decide whether correct or not 
+                        trial.correct = double( ...
+                            (trial.choice==0 && nextTrial.direction==180) || ...
+                            (trial.choice==1 && nextTrial.direction==0));  
+                    end
                 end
                 % ---- Possibly show smiley face
                 if trial.correct == 1 && self.timing.showSmileyFace > 0 && ~self.isCatch
