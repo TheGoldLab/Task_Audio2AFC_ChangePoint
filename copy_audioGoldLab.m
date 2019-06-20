@@ -1,4 +1,4 @@
-function audioGoldLab(str)
+function copy_audioGoldLab(str)
 % run audio 2afc cp task
 % str should be one of 'tut_report', 'tut_prediction', 'report',
 % 'prediction'
