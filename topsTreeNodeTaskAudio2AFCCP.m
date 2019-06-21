@@ -189,6 +189,10 @@ classdef topsTreeNodeTaskAudio2AFCCP < topsTreeNodeTask
         % if true, then task is report the location of the last sound
         isReportTask;  
         
+        % if prediction task, is the correct response based on predicting
+        % the next sound or the next source?
+        isPredictNextSource;
+        
         % Check for changes in properties that require drawables to be
         %  recomputed
         targetDistance;
@@ -209,6 +213,16 @@ classdef topsTreeNodeTaskAudio2AFCCP < topsTreeNodeTask
         
         function setReportProperty(self, boolVal)
             self.isReportTask = boolVal;
+            if boolVal
+                self.setPredictNextSourceProperty(false)
+            end
+        end
+        
+        function setPredictNextSourceProperty(self, boolVal)
+            self.isPredictNextSource = boolVal;
+            if boolVal
+                self.setReportProperty(false)
+            end
         end
         
         %% Make trials (overloaded)
@@ -443,8 +457,6 @@ classdef topsTreeNodeTaskAudio2AFCCP < topsTreeNodeTask
                         (trial.choice==0 && trial.direction==180) || ...
                         (trial.choice==1 && trial.direction==0));
                 else
-                    
-                    
                     % check current trial is not the last one
                     if lastTrial
                         % last trial shoud not be included percent correct calculations
@@ -454,11 +466,17 @@ classdef topsTreeNodeTaskAudio2AFCCP < topsTreeNodeTask
                         % get sound of next trial in queue
                         nextTrial = self.getTrial(trial.trialIndex + 1);
 %                         disp(nextTrial.direction)
-                        % compare answer to aforementioned source
+
+                        if self.isPredictNextSource
+                            refSide = nextTrial.source;  % predict next source
+                        else
+                            refSide = nextTrial.direction; % predict next sound
+                        end
+                        % compare answer to aforementioned source or sound
                         % decide whether correct or not 
                         trial.correct = double( ...
-                            (trial.choice==0 && nextTrial.direction==180) || ...
-                            (trial.choice==1 && nextTrial.direction==0));  
+                            (trial.choice==0 && refSide==180) || ...
+                            (trial.choice==1 && refSide==0));  
                     end
                 end
 %                 % ---- Possibly show smiley face

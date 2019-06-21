@@ -43,11 +43,16 @@ settings = { ...
     'showFeedback',               .5, ... % timeout for feedback
     'showSmileyFace',             .2, ...
     'trialFolder',                '', ...
-    'isReport',                   true};
+    'isReport',                   true, ...
+    'predictSource',              false};
 
 % Update from argument list (property/value pairs)
 for ii = 1:2:nargin
     settings{find(strcmp(varargin{ii}, settings),1) + 1} = varargin{ii+1};
+end
+
+if settings.predictSource + settings.isReport == 2
+    error('should not be both a report and a prediction block')
 end
 
 %% ---- Create topsTreeNodeTopNode to control the experiment
@@ -154,7 +159,7 @@ for ii = 1:2:length(taskSpecs)
     task.trialSettings.csvFile = [trial_folder, taskSpecs{ii}, '.csv'];
     task.trialSettings.jsonFile = [trial_folder, taskSpecs{ii}, '_metadata.json'];
     task.setReportProperty(topNode.nodeData{'Settings'}{'isReport'})
-    
+    task.setPredictNextSourceProperty(topNode.nodeData{'Settings'}{'predictSource'});
     % Add as child to the maintask.
     topNode.addChild(task);
 end

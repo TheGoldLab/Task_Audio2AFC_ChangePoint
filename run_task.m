@@ -49,7 +49,8 @@ switch location
             'sendTTLs',             false, ...
             'showFeedback',         0, ... % timeout for feedback
             'showSmileyFace',       0, ... % timeout for smiley face on correct target
-            'isReport',             false
+            'isReport',             false, ...
+            'predictSource',        true
             };
     case {'tut_prediction'}
         arglist = { ...
@@ -61,7 +62,8 @@ switch location
             'sendTTLs',             false, ...
             'showFeedback',         0, ... % timeout for feedback
             'showSmileyFace',       0.5, ... % timeout for smiley face on correct target
-            'isReport',             false
+            'isReport',             false, ...
+            'predictSource',        true
             };
     case {'tut_report'}
         arglist = { ...
