@@ -424,81 +424,82 @@ classdef topsTreeNodeTaskAudio2AFCCP < topsTreeNodeTask
                 nextState = [];
                 return
             end
-            % get total num of trials
-            totNumTrials = numel(self.trialData);
             
             trial = self.getTrial();
-            trial.RT = trial.choiceTime - trial.sound1Off;
-            trial.choice = double(strcmp(eventName, 'choseRight'));
-            lastTrial = trial.trialIndex == totNumTrials;
             
-            if trial.RT < 0 || isnan(trial.RT)
-                % this whole block should be redundant now
-                nextState = 'waitForReleasFX';
-                pause(0.1)
-                self.helpers.feedback.show('text', ...
-                    {'You answered too soon.', ...
-                     'Please wait until the cross turns blue.'}, ...
-                     'showDuration', 4, ...
-                     'blank', true);
+            if self.isReportTask
+                trial.RT = trial.choiceTime - trial.sound1Off;
             else
-                % Jump to next state when done
-                if self.isCatch
-                    nextState = 'waitForReleasFX';
-                else
-                    nextState = 'blank';
-                    % Override completedTrial flag
-                    self.completedTrial = true;
-                end
-                
-                % Mark as correct/error
-                if self.isReportTask
-                    trial.correct = double( ...
-                        (trial.choice==0 && trial.direction==180) || ...
-                        (trial.choice==1 && trial.direction==0));
-                else
-                    % check current trial is not the last one
-                    if lastTrial
-                        % last trial shoud not be included percent correct calculations
-                        % would nan be more appropriate?
-                        trial.correct = 0;  
-                    else
-                        % get sound of next trial in queue
-                        nextTrial = self.getTrial(trial.trialIndex + 1);
-%                         disp(nextTrial.direction)
-
-                        if self.isPredictNextSource
-                            refSide = nextTrial.source;  % predict next source
-                        else
-                            refSide = nextTrial.direction; % predict next sound
-                        end
-                        % compare answer to aforementioned source or sound
-                        % decide whether correct or not 
-                        trial.correct = double( ...
-                            (trial.choice==0 && refSide==180) || ...
-                            (trial.choice==1 && refSide==0));  
-                    end
-                end
-%                 % ---- Possibly show smiley face
-%                 if (trial.correct == 1) ...
-%                         && (self.timing.showSmileyFace > 0) ...
-%                         && (~self.isCatch) ...
-%                         && (self.isReportTask || ...
-%                         (~self.isReportTask && ~lastTrial))
-%                     
-%                     self.helpers.stimulusEnsemble.draw( ...
-%                         {'isVisible', true, 3}, ...
-%                         {'isVisible', false, [1 2 4]});
-%                     pause(self.timing.showSmileyFace);
-%                 end
+                trial.RT = trial.choiceTime - trial.fixationOn;
             end
             
+            trial.choice = double(strcmp(eventName, 'choseRight'));
 
-                  
+            %
+            %             if trial.RT < 0 || isnan(trial.RT)
+            %                 % this whole block should be redundant now
+            %                 nextState = 'waitForReleasFX';
+            %                 pause(0.1)
+            %                 self.helpers.feedback.show('text', ...
+            %                     {'You answered too soon.', ...
+            %                      'Please wait until the cross turns blue.'}, ...
+            %                      'showDuration', 4, ...
+            %                      'blank', true);
+            %             else
+            % Jump to next state when done
+            if self.isCatch
+                nextState = 'waitForReleasFX';
+            else
+                if self.isReportTask
+                    nextState = 'blank';
+                else
+                    nextState = 'delay';
+                end
+                
+                % Override completedTrial flag
+                self.completedTrial = true;
+            end
+            
+            % Mark as correct/error
+            if self.isReportTask
+                trial.correct = double( ...
+                    (trial.choice==0 && trial.direction==180) || ...
+                    (trial.choice==1 && trial.direction==0));
+            else
+                
+                
+                if self.isPredictNextSource
+                    refSide = trial.source;  % predict next source
+                else
+                    refSide = trial.direction; % predict next sound
+                end
+                % compare answer to aforementioned source or sound
+                % decide whether correct or not
+                trial.correct = double( ...
+                    (trial.choice==0 && refSide==180) || ...
+                    (trial.choice==1 && refSide==0));
+                
+            end
+            %                 % ---- Possibly show smiley face
+            %                 if (trial.correct == 1) ...
+            %                         && (self.timing.showSmileyFace > 0) ...
+            %                         && (~self.isCatch) ...
+            %                         && (self.isReportTask || ...
+            %                         (~self.isReportTask && ~lastTrial))
+            %
+            %                     self.helpers.stimulusEnsemble.draw( ...
+            %                         {'isVisible', true, 3}, ...
+            %                         {'isVisible', false, [1 2 4]});
+            %                     pause(self.timing.showSmileyFace);
+            %                 end
+            %             end
+            
+            
+            
             % ---- Re-save the trial
             %
             self.setTrial(trial);
-
+            
         end
         
         %% Check for catch choice
@@ -516,8 +517,11 @@ classdef topsTreeNodeTaskAudio2AFCCP < topsTreeNodeTask
                 return
             end
             
-            
-            nextState = 'blank';
+            if self.isReportTask
+                nextState = 'blank';
+            else
+                nextState = 'delay';
+            end
             % Override completedTrial flag
             self.completedTrial = true;
             
@@ -639,7 +643,8 @@ classdef topsTreeNodeTaskAudio2AFCCP < topsTreeNodeTask
            
             totTrials = numel(self.trialData);
             isLastTrial = (totTrials == trial.trialIndex);
-            skipFb = ~self.isReportTask && isLastTrial;
+%             skipFb = ~self.isReportTask && isLastTrial;
+            skipFb = false;
             
 %             % ---- Possibly show smiley face
 %             if (trial.correct == 1) ...
@@ -799,7 +804,7 @@ classdef topsTreeNodeTaskAudio2AFCCP < topsTreeNodeTask
             hided   = {@draw,self.helpers.stimulusEnsemble, {[], 1}, self, 'fixationOff'};
             mdfs = {@modifySound, self};
             rsts = {@resetSound, self};
-%             pdbr = {@setNextState, self, 'isCatch', 'playSound', 'catchSound', 'waitForChoiceFX'};
+            pdbr = {@setNextState, self, 'isCatch', 'playSound', 'catchSound', 'blank'};
             wtng = {@dispWaintingText1, self, 'waiting for response'};
             gdby = {@dispWaintingText1, self, 'good bye'};
             % drift correction
@@ -809,7 +814,11 @@ classdef topsTreeNodeTaskAudio2AFCCP < topsTreeNodeTask
             sea   = @setEventsActiveFlag;
 %             gwfxw = {sea, self.helpers.reader.theObject, 'holdFixation'};
 %             gwfxh = {};
+
+            % activate left/right choices events
             gwts  = {sea, self.helpers.reader.theObject, {'choseLeft', 'choseRight'}};
+            
+            
             flsh = {@flushData, self.helpers.reader.theObject};
             dque = {@flushEventsQueue, self};
             evtwrn = {@earlyEventWarning, self, {'choseLeft', 'choseRight'}};
@@ -820,21 +829,38 @@ classdef topsTreeNodeTaskAudio2AFCCP < topsTreeNodeTask
             % ---- Make the state machine. These will be added into the
             %        stateMachine (in topsTreeNode)
             %
-            states = {...
-                'name'              'entry'  'input'  'timeout'             'exit'     'next'            ; ...
-                'showFixation'      showfx   {}       t.preStim             gwts       'playSound'       ; ...
-                'playSound'         plays1   {}       0                     mdfs       'earlyEvents'     ; ...
-                'earlyEvents'       evtwrn   {}       0                     {}         ''                ; ...
-                'catchSound'        plays2   {}       0                     rsts       'waitForChoiceFX' ; ...
-                'waitForChoiceFX'   shfxb    chkuic   t.choiceTimeout       {}         'blank'           ; ...
-                'waitForReleasFX'   {}       chkuic2  t.choiceTimeout       dque       ''                ; ...
-                'secondChoice'      {}       chkuic3  t.choiceTimeout       {}         'blank'           ; ...
-                'blank'             hided    {}       0.2                   {}         'showFeedback'    ; ...
-                'showFeedback'      showfb   {}       t.showFeedback        blanks     'done'            ; ...
-                'blankNoFeedback'   {}       {}       0                     blanks     'done'            ; ...
-                'done'              dnow     {}       t.interTrialInterval  {}         ''                ; ...
-                };
-            
+            if self.isReportTask
+                states = {...
+                    'name'              'entry'  'input'  'timeout'             'exit'     'next'            ; ...
+                    'showFixation'      showfx   {}       t.preStim             gwts       'playSound'       ; ...
+                    'playSound'         plays1   {}       0                     mdfs       'earlyEvents'     ; ...
+                    'earlyEvents'       evtwrn   {}       0                     {}         ''                ; ...
+                    'catchSound'        plays2   {}       0                     rsts       'waitForChoiceFX' ; ...
+                    'waitForChoiceFX'   shfxb    chkuic   t.choiceTimeout       {}         'blank'           ; ...
+                    'waitForReleasFX'   {}       chkuic2  t.choiceTimeout       dque       ''                ; ...
+                    'secondChoice'      {}       chkuic3  t.choiceTimeout       {}         'blank'           ; ...
+                    'blank'             hided    {}       0.2                   {}         'showFeedback'    ; ...
+                    'showFeedback'      showfb   {}       t.showFeedback        blanks     'done'            ; ...
+                    'blankNoFeedback'   {}       {}       0                     blanks     'done'            ; ...
+                    'done'              dnow     {}       t.interTrialInterval  {}         ''                ; ...
+                    };
+            else
+                states = {...
+                    'name'              'entry'  'input'  'timeout'             'exit'     'next'            ; ...
+                    'showFixation'      showfx   {}       t.preStim             gwts       'waitForChoiceFX'       ; ...
+                    'waitForChoiceFX'   {}       chkuic   t.choiceTimeout       pdbr       'blank'           ; ...
+                    'waitForReleasFX'   {}       chkuic2  t.choiceTimeout       dque       ''                ; ...
+                    'secondChoice'      {}       chkuic3  t.choiceTimeout       {}         'blank'           ; ...
+                    'delay'             shfxb    {}       .5                    {}         'playSound'       ; ...
+                    'playSound'         plays1   {}       0                     mdfs       ''                ; ...
+%                     'earlyEvents'       evtwrn   {}       0                     {}         ''                ; ...
+                    'catchSound'        plays2   {}       0                     rsts       'blank'           ; ...
+                    'blank'             hided    {}       0.2                   {}         'showFeedback'    ; ...
+                    'showFeedback'      showfb   {}       t.showFeedback        blanks     'done'            ; ...
+                    'blankNoFeedback'   {}       {}       0                     blanks     'done'            ; ...
+                    'done'              dnow     {}       0                     {}         ''                ; ...
+                    };
+            end
             % ---- Set up ensemble activation list. This determines which
             %        states will correspond to automatic, repeated calls to
             %        the given ensemble methods
