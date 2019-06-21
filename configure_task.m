@@ -51,7 +51,8 @@ for ii = 1:2:nargin
     settings{find(strcmp(varargin{ii}, settings),1) + 1} = varargin{ii+1};
 end
 
-if settings.predictSource + settings.isReport == 2
+if settings{find(strcmp('predictSource',settings))+1} + ...
+        settings{find(strcmp('isReport',settings))+1} == 2
     error('should not be both a report and a prediction block')
 end
 
