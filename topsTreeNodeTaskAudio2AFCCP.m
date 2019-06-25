@@ -178,9 +178,7 @@ classdef topsTreeNodeTaskAudio2AFCCP < topsTreeNodeTask
              ...
              ...   % single-hand buttons
              'dotsReadableHIDButtons',     struct( ...
-             'start',                      {{@defineEventsFromStruct, struct( ...
-             'name',                       {'choseLeft', 'choseRight'}, ...
-             'component',                  {'Button1', 'Button2'})}}), ...
+             'start',                      {@disp, 'doing nothing'}), ...
              ...
              ...   % Dummy to run in demo mode
              'dotsReadableDummy',          struct( ...
@@ -320,6 +318,25 @@ classdef topsTreeNodeTaskAudio2AFCCP < topsTreeNodeTask
             if isa(readableObj,'dotsReadableHIDGamepad')
                 readableObj.defineEvent('x', 'component', 9);
                 readableObj.defineEvent('y', 'component', 10);
+            elseif isa(readableObj, 'dotsReadableHIDButtons')
+                IDs = readableObj.getComponentIDs();
+                for ii = 1:numel(IDs)
+                    try
+                        eventName = readableObj.components(ii).name;
+                        if strcmp(eventName, 'Button1')
+                            eventName = 'choseLeft';
+                        elseif strcmp(eventName, 'Button2')
+                            eventName = 'choseRight';
+                        end
+                        readableObj.defineEvent(eventName, 'component', IDs(ii));
+                    catch
+                        warning(['pb with ',readableObj.components(ii).name])
+                    end
+                end
+                for i=1:length(readableObj.eventDefinitions)
+                    readableObj.eventDefinitions(i).isActive = 1;
+                end
+                readableObj.isAutoRead = true;
             end
             
             self.trialIterationMethod = 'sequential';  % enforce sequential
