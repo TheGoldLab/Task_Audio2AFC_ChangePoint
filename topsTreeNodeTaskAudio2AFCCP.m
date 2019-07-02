@@ -75,7 +75,9 @@ classdef topsTreeNodeTaskAudio2AFCCP < topsTreeNodeTask
             'targetOff', ...
             'fixationOff', ...
             'feedbackOn', ...
-            'dirReleaseChoiceTime'};
+            'dirReleaseChoiceTime', ...
+            'catchChoiceMissing', ...
+            'catchChoiceOpposite'};
         
         % Drawables settings
         drawable = struct( ...
@@ -394,7 +396,14 @@ classdef topsTreeNodeTaskAudio2AFCCP < topsTreeNodeTask
                       
             self.flushEventsQueue()
         end
-        
+        function missFeedback(self)
+            self.helpers.stimulusEnsemble.draw({[], 1}, self, 'fixationOff');
+            self.helpers.feedback.show('text', ...
+                {'When second sound occurs,', ...
+                'please press the button twice.'}, ...
+                'showDuration', 4, ...
+                'blank', true);
+        end
         %% Check for choice
         %
         % Save choice/RT information and set up feedback for the dots task
@@ -434,6 +443,7 @@ classdef topsTreeNodeTaskAudio2AFCCP < topsTreeNodeTask
             % Jump to next state when done
             if self.isCatch
                 nextState = 'waitForReleasFX';
+                trial.catchChoiceMissing = 1;  % set to 0 if catch choice provided later (in checkForCatchChoice)
             else
                 if self.isReportTask
                     nextState = 'blank';
@@ -511,6 +521,7 @@ classdef topsTreeNodeTaskAudio2AFCCP < topsTreeNodeTask
             self.completedTrial = true;
             
             trial = self.getTrial();
+            trial.catchChoiceMissing = 0;
             
             % COMPUTE correct TRIAL
             if trial.choice == 0
@@ -520,14 +531,17 @@ classdef topsTreeNodeTaskAudio2AFCCP < topsTreeNodeTask
             end
             if ~strcmp(eventName, firstChoice)  % second button press doesn't match the first one
                 trial.correct = 0;
-                self.setTrial(trial)
+                trial.catchChoiceOpposite = 1;
+                
                 pause(0.1)
                 self.helpers.feedback.show('text', ...
                     {'On catch trials you should press the same button twice.'}, ...
                     'showDuration', 4, ...
                     'blank', true);
+            else
+                trial.catchChoiceOpposite = 0;
             end
-            
+            self.setTrial(trial)
 %             totTrials = numel(self.trialData);
 %             isLastTrial = (totTrials == trial.trialIndex);
 %             skipFb = ~self.isReportTask && isLastTrial;  
@@ -572,27 +586,31 @@ classdef topsTreeNodeTaskAudio2AFCCP < topsTreeNodeTask
             % Get current task/trial
             trial = self.getTrial();
             
+            if trial.catchChoiceMissing == 1
+                trial.correct = 0;
+            end
+            
             %  Check for RT feedback
             RTstr = '';
             imageIndex = self.settings.correctImageIndex;
-            if self.name(1) == 'S'
-                
-                % Check current RT relative to the reference value
-                if isa(self.settings.referenceRT, 'topsTreeNodeTaskRTDots')
-                    RTRefValue = self.settings.referenceRT.settings.referenceRT;
-                else
-                    RTRefValue = self.settings.referenceRT;
-                end
-                
-                if isfinite(RTRefValue)
-                    if trial.RT <= RTRefValue
-                        RTstr = ', in time';
-                    else
-                        RTstr = ', try to decide faster';
-                        imageIndex = self.settings.errorTooSlowImageIndex;
-                    end
-                end
-            end
+%             if self.name(1) == 'S'
+%                 
+%                 % Check current RT relative to the reference value
+%                 if isa(self.settings.referenceRT, 'topsTreeNodeTaskRTDots')
+%                     RTRefValue = self.settings.referenceRT.settings.referenceRT;
+%                 else
+%                     RTRefValue = self.settings.referenceRT;
+%                 end
+%                 
+%                 if isfinite(RTRefValue)
+%                     if trial.RT <= RTRefValue
+%                         RTstr = ', in time';
+%                     else
+%                         RTstr = ', try to decide faster';
+%                         imageIndex = self.settings.errorTooSlowImageIndex;
+%                     end
+%                 end
+%             end
             
             % Set up feedback based on outcome
             if trial.correct == 1
@@ -829,6 +847,7 @@ classdef topsTreeNodeTaskAudio2AFCCP < topsTreeNodeTask
             pdbr = {@setNextState, self, 'isCatch', 'playSound', 'catchSound', 'blank'};
             wtng = {@dispWaintingText1, self, 'waiting for response'};
             gdby = {@dispWaintingText1, self, 'good bye'};
+            mssfb = {@missFeedback, self};
             % drift correction
 %             hfdc  = {@reset, self.helpers.reader.theObject, true};
             
@@ -864,7 +883,8 @@ classdef topsTreeNodeTaskAudio2AFCCP < topsTreeNodeTask
                     'catchSound'        plays2   {}       0                     rsts       'waitForChoiceFX' ; ...
                     'waitForChoiceFX'   {}       chkuic   t.choiceTimeout       {}         'blank'           ; ...
                     'waitForReleasFX'   {}       chkuic2  t.choiceTimeout       dque       ''                ; ...
-                    'secondChoice'      {}       chkuic3  t.choiceTimeout       {}         'blank'           ; ...
+                    'secondChoice'      {}       chkuic3  t.choiceTimeout       {}         'missedCatchChoice' ; ...
+                    'missedCatchChoice' mssfb    {}       0                     {}         'blank'           ; ...
                     'blank'             hided    {}       0.2                   {}         'showFeedback'    ; ...
                     'showFeedback'      showfb   {}       t.showFeedback        blanks     'done'            ; ...
                     'blankNoFeedback'   {}       {}       0                     blanks     'done'            ; ...
