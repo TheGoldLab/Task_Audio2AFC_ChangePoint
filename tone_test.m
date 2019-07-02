@@ -3,12 +3,12 @@ clear
        %    frequency (Hz)
        %    duration  (sec)
        %    intensity (normalized)
-t_long=dotsPlayableTone.makePlayableTone([400; .3; .01]);
+t_long=dotsPlayableFastTone.makeTone([400; .3; .01]);
 t_long.side='left'; % can't check that with broken headphones yet.
 t_long.playBlocking = true;
 t_long.prepareToPlay();
 
-t_short=dotsPlayableTone.makePlayableTone([412; .03; .01]);
+t_short=dotsPlayableFastTone.makeTone([412; .03; .01]);
 t_short.side='right'; % can't check that with broken headphones yet.
 t_short.playBlocking = true;
 t_short.prepareToPlay();

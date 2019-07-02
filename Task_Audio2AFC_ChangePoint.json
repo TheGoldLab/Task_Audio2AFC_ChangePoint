@@ -9,5 +9,9 @@
 	{
 		"name": "Lab_Matlab_Control",
 		"type": "include"
-	}
+	},
+    {
+        "name": "Psychtoolbox-3",
+        "type": "include"
+    }
 ]
