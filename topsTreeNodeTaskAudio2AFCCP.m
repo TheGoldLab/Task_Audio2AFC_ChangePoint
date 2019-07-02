@@ -137,7 +137,7 @@ classdef topsTreeNodeTaskAudio2AFCCP < topsTreeNodeTask
             ...
             'copySpecs',                  struct( ...
              ...   % single-hand buttons
-             'dotsReadableHIDButtons',     struct( ...
+             'customButtonsClass',     struct( ...
              'start',                      {{@nullfunc}}))));
     end
     
@@ -272,7 +272,7 @@ classdef topsTreeNodeTaskAudio2AFCCP < topsTreeNodeTask
             if isa(readableObj,'dotsReadableHIDGamepad')
                 readableObj.defineEvent('x', 'component', 9);
                 readableObj.defineEvent('y', 'component', 10);
-            elseif isa(readableObj, 'dotsReadableHIDButtons')
+            elseif isa(readableObj, 'customButtonsClass')
                 IDs = readableObj.getComponentIDs();
                 for ii = 1:numel(IDs)
                     try
