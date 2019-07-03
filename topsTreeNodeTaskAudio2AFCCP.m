@@ -283,6 +283,10 @@ classdef topsTreeNodeTaskAudio2AFCCP < topsTreeNodeTask
                             eventName = 'choseLeft';
                         elseif strcmp(eventName, 'Button2')
                             eventName = 'choseRight';
+                        elseif strcmp(eventName, 'KeyboardLeftShift')
+                            eventName = 'choseLeft';
+                        elseif strcmp(eventName, 'KeyboardSlash')
+                            eventName = 'choseRight';
                         end
                         readableObj.defineEvent(eventName, 'component', IDs(ii));
                     catch
