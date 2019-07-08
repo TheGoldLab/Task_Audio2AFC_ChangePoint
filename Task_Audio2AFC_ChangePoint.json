@@ -1,17 +1,11 @@
 [
 	{	
 		"name": "Task_Audio2AFC_ChangePoint",
-        "flavor": "",
 		"type": "git",
-		"url": "https://github.com/TheGoldLab/Task_Audio2AFC_ChangePoint.git",
-	    "update": ""
+		"url": "https://github.com/TheGoldLab/Task_Audio2AFC_ChangePoint.git"
 	},
 	{
 		"name": "Lab_Matlab_Control",
 		"type": "include"
-	},
-    {
-        "name": "Psychtoolbox-3",
-        "type": "include"
-    }
+	}
 ]

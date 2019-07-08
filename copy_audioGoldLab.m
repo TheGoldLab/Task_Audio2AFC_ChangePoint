@@ -1,12 +1,18 @@
 function copy_audioGoldLab(str)
 % run audio 2afc cp task
-% str should be one of 'tut_report', 'tut_prediction', 'report',
-% 'prediction'
-% Example:
-%  audioGoldLab('tut_report')
-if ismember(str, {'tut_report', 'tut_prediction', 'report', 'prediction'})
-    tbUseProject('Task_Audio2AFC_ChangePoint')
-    run_task(str)
-else
-    error('str arg should be one of "tut_report", "tut_prediction", "report", "prediction"')
+clear all
+
+tbUseProject('Task_Audio2AFC_ChangePoint')
+
+hashed_sc = getSubjectCode();
+
+% compute suggested block for current session
+[block, params] = suggestBlock(hashed_sc);
+
+if size(block,1) == 1
+    block=block';  % transpose for aesthetic purposes
+end
+disp(block)
+
+isOK = input('Is the above block OK? (y/n) ', 's');
 end
