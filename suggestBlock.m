@@ -9,20 +9,19 @@ function [bsqCell, bparams]=suggestBlock(sc)
 rng('shuffle');
 
 % display what the subject has completed and what is left to complete
-sessionsTable = subjSummary(sc);
-
-% get default block names sequence
-bsqCell=readDefaultPairSequence();
+[sessionsTable, seqType] = subjSummary(sc);
 
 % if subject is not new
 if size(sessionsTable, 1) > 0  
+    % get default block names sequence
+    bseq=readDefaultPairSequence(seqType);  % seqType should never be NaN here
     
     % check whether last session was the completion of a pair or not
     lastWasCompletion = sessionsTable{end, 'PairCompletion'};
     if lastWasCompletion
         % move to next pair
-        nextPairIndex = find(~sum(sessionsTable{:,1:length(bsqCell)}), 1);
-        nextPair = bsqCell{nextPairIndex};
+        nextPairIndex = find(~sum(sessionsTable{:,1:length(bseq)}), 1);
+        nextPair = bseq{nextPairIndex};
         lastBlockType = sessionsTable{end, 'BlockType'};
         % flip block type
         if strcmp(lastBlockType, 'rep')
@@ -32,8 +31,8 @@ if size(sessionsTable, 1) > 0
         end
     else
         % repeat same pair as last session
-        nextPairIndices = find(sum(sessionsTable{:,1:length(bsqCell)}), 1);
-        nextPair = bsqCell{nextPairIndices(end)};
+        nextPairIndices = find(sum(sessionsTable{:,1:length(bseq)}), 1);
+        nextPair = bseq{nextPairIndices(end)};
         % if last session was completed, flip block type, otherwise repeat
         lastBlockType = sessionsTable{end, 'BlockType'};
         if sessionsTable{end, nextPair}
@@ -51,38 +50,35 @@ if size(sessionsTable, 1) > 0
     % the ordered list of blocks for this session
     % we always start with appropriate tutorial
     if strcmp(nextBlockType, 'rep')
-        compulsory={'TutReport'};
+        bsqCell={'TutReport'};
     else
-        compulsory={'TutPrediction'};
+        bsqCell={'TutPrediction'};
     end
     
    
-    compulsory{2} = nextPair;
+    bsqCell{2} = nextPair;
 
-    
-    % set the variables to return
-    bsqCell=compulsory;
-    
     % get the key-value pairs by trimming with the appropriate function
     bparams = nextBlockType;
+    
 else  % subject is new and new entry should be created in metadata file
     if rand < 0.5
-        startH = 'low';
-        first = 'odd';  % low h blocks are at odd indices
-        bsqCell = bsqCell{1};
+        seqType = 'lowFirst';
     else
-        startH = 'high';
-        first = 'even';
-        bsqCell = bsqCell{2};
+        seqType = 'highFirst';
     end
+    
+    bseq = readDefaultPairSequence(seqType);
+    
     if rand < 0.5
-        btype = 'rep';
+        bparams = 'rep';    
+        bsqCell = {'TutReport', bseq{1}};
     else
-        btype = 'pred';
+        bparams = 'pred';
+        bsqCell = {'TutPrediction', bseq{1}};
     end
-    bparams = btype;
-    originalFile = loadjson('subj_metadata.json');
-    originalFile.(sc) = struct();
+      originalFile = loadjson('subj_metadata.json');
+    originalFile.(sc) = struct('seqType', seqType);
     savejson('', originalFile, 'subj_metadata.json');
 end
 end

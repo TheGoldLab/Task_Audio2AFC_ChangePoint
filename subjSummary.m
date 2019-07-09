@@ -1,4 +1,4 @@
-function tab = subjSummary(subjcode, filename)
+function [tab, seqType] = subjSummary(subjcode, filename)
 % displays metadata about a subject in this experiment
 % function accepts 0, 1 or 2 arguments.
 % if the subject code is not known, just call the function with no argument
@@ -26,15 +26,7 @@ end
 %---
 
 
-blockList = readDefaultPairSequence();
-num_pairs = length(blockList);
 
-blockList{num_pairs + 1} = 'TutReport';
-blockList{num_pairs + 2} = 'TutPrediction';
-blockList{num_pairs + 3} = 'PairCompletion';
-blockList{num_pairs + 4} = 'Type';
-
-num_bools = length(blockList) - 1;
 
 ds = loadjson(filename);
 
@@ -42,7 +34,20 @@ ds = loadjson(filename);
 if isfield(ds, subjcode)
     currDs = ds.(subjcode);  % struct for this subject
     sessionNames = fieldnames(currDs);  % cell array of field names
-    numSessions = length(fieldnames(currDs));
+    seqType = currDs.seqType;
+    
+    blockList = readDefaultPairSequence(seqType);
+    num_pairs = length(blockList);
+    
+    blockList{num_pairs + 1} = 'TutReport';
+    blockList{num_pairs + 2} = 'TutPrediction';
+    blockList{num_pairs + 3} = 'PairCompletion';
+    blockList{num_pairs + 4} = 'Type';
+    
+    num_bools = length(blockList) - 1;
+    
+    sessionNames = sessionNames(2:end);  % delete first field since it is the field type
+    numSessions = length(sessionNames);
     type = cell(numSessions, 1);
     completedBlocks = cell(numSessions, length(blockList)-1);
     datesArray = cell(size(sessionNames));
@@ -53,11 +58,13 @@ if isfield(ds, subjcode)
     
     %following cell keeps memory of last valid block name and type
     lastValid = {'',''};  % {'block name', 'block type'}
+    
     % loop through sessions
-    for s = 1:numSessions
-        session = sessionNames{s};  % e.g. session1, session2, etc.
+    for s = 2:numSessions+1  % start at 2 because first field is seqType
+        sidx = s-1;
+        session = sessionNames{sidx};  % e.g. session1, session2, etc.
         sessStruct = currDs.(session);  % struct with session info
-        datesArray{s} = sessStruct.sessionTag;  % usually a date stamp
+        datesArray{sidx} = sessStruct.sessionTag;  % usually a date stamp
         completed_pair = 0;  % whether this session completed a pair or not
         
         % loop through blocks
@@ -67,9 +74,9 @@ if isfield(ds, subjcode)
                 if b <= num_pairs
                     blockType = sessStruct.(blockName).type;
                 end
-                completedBlocks{s,b} = sessStruct.(blockName).completed;
-                if completedBlocks{s,b} && ~strcmp(blockName(1:3), 'Tut')
-                    if s == 1
+                completedBlocks{sidx,b} = sessStruct.(blockName).completed;
+                if completedBlocks{sidx,b} && ~strcmp(blockName(1:3), 'Tut')
+                    if sidx == 1
                         lastValid{1} = blockName;
                         lastValid{2} = blockType;
                     end
@@ -86,11 +93,11 @@ if isfield(ds, subjcode)
                     lastValid{2} = blockType;
                 end
             elseif b == num_bools
-                completedBlocks{s,b} = completed_pair;
+                completedBlocks{sidx,b} = completed_pair;
                 completed_pair = 0;
-                type{s} = blockType;
+                type{sidx} = blockType;
             else
-                completedBlocks{s,b} = 0;
+                completedBlocks{sidx,b} = 0;
             end
         end
     end
@@ -109,6 +116,7 @@ else
     fprintf('Subject %s is new for this experiment', subjcode);
     fprintf(char(10))
     tab=table();
+    seqType = NaN;
 end
 
 end

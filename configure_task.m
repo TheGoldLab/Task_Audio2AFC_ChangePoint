@@ -26,6 +26,7 @@ name = 'Audio2AFC_CP';
 % Other defaults
 settings = { ...
     'taskSpecs',                  {},...
+    'subjectCode',                '', ...
     'type',                       'rep', ...
     'remoteDrawing',              false, ...
     'instructionDuration',        0, ...
@@ -43,15 +44,17 @@ settings = { ...
     'showSmileyFace',             .2, ...
     'trialFolder',                '', ...
     'isReport',                   true, ...
-    'predictSource',              false};
+    'predictSource',              false, ...
+    'buttonBox',                  'EMU'};
 
 % Update from argument list (property/value pairs)
 for ii = 1:2:nargin
     settings = setval(settings, varargin{ii}, varargin{ii+1});
 end
 
-type = access(settings, 'type');
-
+c = access(settings, 'taskSpecs');
+type = c{2};
+setval(settings, 'type', type);
 if strcmp(type, 'pred')
     settings = setval(settings, 'isReport', false);
     settings = setval(settings, 'predictSource', true);
@@ -126,7 +129,7 @@ end
 taskSpecs = topNode.nodeData{'Settings'}{'taskSpecs'};
 noDots    = true;
 
-blockList = readDefaultPairSequence();
+blockList = readDefaultPairSequence('lowFirst');  % the taskTypeID below matches the order of the lowFirst pair sequence
 num_pairs = length(blockList);
 blockList{num_pairs + 1} = 'TutReport';
 blockList{num_pairs + 2} = 'TutPrediction';
@@ -165,6 +168,9 @@ for ii = 1:2
         noDots = false;
     end
     
+    task.settings.subjectCode = topNode.nodeData{'Settings'}{'subjectCode'};
+    task.settings.buttonBox = topNode.nodeData{'Settings'}{'buttonBox'};
+    
     trial_folder = [blockName, '/'];
     % Special case of quest ... use output as coh/RT refs
 
@@ -174,6 +180,7 @@ for ii = 1:2
     task.trialSettings.jsonFile = [trial_folder, blockName, '_metadata.json'];
     task.setReportProperty(topNode.nodeData{'Settings'}{'isReport'})
     task.setPredictNextSourceProperty(topNode.nodeData{'Settings'}{'predictSource'});
+    
     % Add as child to the maintask.
     topNode.addChild(task);
 end

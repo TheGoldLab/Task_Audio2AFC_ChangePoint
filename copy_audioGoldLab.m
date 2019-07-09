@@ -17,6 +17,6 @@ end
 
 disp(['About to run: ', block{1} , ' + ', block{2}, ' (', type,')'])
 
-run_task('office', block, type)
+run_task('office', block, type, hashed_sc)
 
 end

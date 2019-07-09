@@ -20,7 +20,9 @@ classdef topsTreeNodeTaskAudio2AFCCP < topsTreeNodeTask
             'errorImageIndex',            3,    ...
             'errorTooSlowImageIndex',     4,    ... % see topsTaskHelperFeedback
             'correctPlayableIndex',       3,    ...
-            'errorPlayableIndex',         4);
+            'errorPlayableIndex',         4,    ...
+            'buttonBox',                  'EMU', ... % Gold and EMU are the only two valid strings
+            'subjectCode',                '');  
         
         % settings about the trial sequence to use
         trialSettings = struct( ...
@@ -141,6 +143,8 @@ classdef topsTreeNodeTaskAudio2AFCCP < topsTreeNodeTask
              ...   % single-hand buttons
              'customButtonsClass',     struct( ...
              'start',                      {{@nullfunc}}))));
+         
+        metadatafile = 'subj_metadata.json';
     end
     
     properties (SetAccess = protected)
@@ -251,11 +255,13 @@ classdef topsTreeNodeTaskAudio2AFCCP < topsTreeNodeTask
                 
                 % catch trial
                 if strcmp(trialsTable.isCatch(tr), 'True')
-                    if self.isReportTask
-                        self.trialData(tr).catch = 1.0; % numeric for FIRA
-                    else
-                        self.trialData(tr).catch = 0;
-                    end
+%                     if self.isReportTask
+%                         self.trialData(tr).catch = 1.0; % numeric for FIRA
+%                     else
+%                         self.trialData(tr).catch = 0;
+%                     end
+                % FOR THIS VERSION OF THE TASK, DISABLE ALL CATCH TRIALS
+                    self.trialData(tr).catch = 0;
                 else
                     self.trialData(tr).catch = 0;
                 end
@@ -279,14 +285,18 @@ classdef topsTreeNodeTaskAudio2AFCCP < topsTreeNodeTask
                 for ii = 1:numel(IDs)
                     try
                         eventName = readableObj.components(ii).name;
-                        if strcmp(eventName, 'Button1')
-                            eventName = 'choseLeft';
-                        elseif strcmp(eventName, 'Button2')
-                            eventName = 'choseRight';
-                        elseif strcmp(eventName, 'KeyboardLeftShift')
-                            eventName = 'choseLeft';
-                        elseif strcmp(eventName, 'KeyboardSlash')
-                            eventName = 'choseRight';
+                        if strcmp(self.settings.buttonBox, 'Gold')
+                            if strcmp(eventName, 'Button1')
+                                eventName = 'choseLeft';
+                            elseif strcmp(eventName, 'Button2')
+                                eventName = 'choseRight';
+                            end
+                        elseif strcmp(self.settings.buttonBox, 'EMU')
+                            if strcmp(eventName, 'KeyboardLeftShift')
+                                eventName = 'choseLeft';
+                            elseif strcmp(eventName, 'KeyboardSlash')
+                                eventName = 'choseRight';
+                            end
                         end
                         readableObj.defineEvent(eventName, 'component', IDs(ii));
                     catch
@@ -319,26 +329,40 @@ classdef topsTreeNodeTaskAudio2AFCCP < topsTreeNodeTask
         % task
         function finishTask(self)
             
+            early_abort = false;
+            tot_trials = numel(self.trialData);
+            valid_trials = 0;
+            for t = 1:tot_trials
+                trial = self.trialData(t);
+                if isnan(trial.correct)
+                    early_abort = true;
+                    break
+                end
+                valid_trials = valid_trials + 1;
+            end
+            
             % store metadata
 
             % first get the session struct
             fullMetaData = loadjson(self.metadatafile);
             tmpStruct=fullMetaData.(self.settings.subjectCode);
-            if isempty(tmpStruct)
+            all_fields = fieldnames(tmpStruct);
+            if length(all_fields) == 1  % recall first field is seqType
                 lastSessionName = 'session0';
             else
-                allSessions = fieldnames(tmpStruct);
-                lastSessionName = allSessions{end};
+                lastSessionName = all_fields{end};
             end
             
             if self.taskID == 1  
                 % for first block in session, create struct
                 currSessionName = [lastSessionName(1:end-1),...
-                    num2str(str2double(lastSessionName(end))+1)];
+                    num2str(str2double(lastSessionName(end))+1)];  % here currSessionName is of the form sessionN
                
                 fullMetaData.(self.settings.subjectCode).(currSessionName) = struct();
                 
                 fullMetaData.(self.settings.subjectCode).(currSessionName).trialFolder = self.name;
+                
+                % is stg below the right string???
                 stg = self.caller.filename(end-31:end-16);
                 fullMetaData.(self.settings.subjectCode).(currSessionName).sessionTag = stg;
                 
@@ -354,20 +378,18 @@ classdef topsTreeNodeTaskAudio2AFCCP < topsTreeNodeTask
             if strcmp(self.name(1:3), 'Tut')
                 iscomplete = valid_trials > 0;
             else
-                iscomplete = block_reward > 0;
+                iscomplete = ~early_abort;
             end
             
             % then fill out the struct with task data
-            subjBlockStruct.completed = iscomplete; 
-            subjBlockStruct.aborted = early_abort;
-            subjBlockStruct.reward = block_reward;
-            subjBlockStruct.numTrials = valid_trials;
-            
-            % write Quest parameters if completed:
-            if strcmp(self.name, 'Quest') && iscomplete
-                psiParamsIndex = qpListMaxArg(self.quest.posterior);
-                subjBlockStruct.QuestFit = self.quest.psiParamsDomain(psiParamsIndex,:);
+            if self.isReportTask
+                type = 'rep';
+            else
+                type = 'pred';
             end
+            subjBlockStruct.type = type;
+            subjBlockStruct.completed = iscomplete; 
+            subjBlockStruct.numTrials = valid_trials;
             
             % then save back struct to metadata file
             fullMetaData.(self.settings.subjectCode).(currSessionName).(self.name) = ...
@@ -401,7 +423,7 @@ classdef topsTreeNodeTaskAudio2AFCCP < topsTreeNodeTask
             % Trial information
             trial = self.getTrial();
             
-            self.isCatch = trial.catch == 1;
+            self.isCatch = trial.catch == 1;  % recall, always false when catch trials disabled
             
             trialString = sprintf('Trial %d/%d, dir=%d, src=%d, catch=%d', ...
                 self.trialCount, numel(self.trialData), ...
