@@ -14,9 +14,9 @@ hashed_sc = getSubjectCode();
 if size(block,1) == 1
     block=block';  % transpose for aesthetic purposes
 end
-
-disp(['About to run: ', block{1} , ' + ', block{2}, ' (', type,')'])
-
+fprintf(char(10))
+fprintf('About to run: %s + %s (%s)', block{1}, block{2}, type)
+fprintf(char(10))
 run_task('office', block, type, hashed_sc)
 
 end

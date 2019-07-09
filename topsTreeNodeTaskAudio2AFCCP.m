@@ -145,6 +145,7 @@ classdef topsTreeNodeTaskAudio2AFCCP < topsTreeNodeTask
              'start',                      {{@nullfunc}}))));
          
         metadatafile = 'subj_metadata.json';
+        midblock = 3;  % should be 103 for 205-trial blocks
     end
     
     properties (SetAccess = protected)
@@ -186,7 +187,7 @@ classdef topsTreeNodeTaskAudio2AFCCP < topsTreeNodeTask
         function nextState = pauseScreen(self, beginning)
             if ~beginning  % we are mid-block
                 trial = self.getTrial();
-                if trial.trialIndex ~= 103
+                if trial.trialIndex ~= self.midblock;
                     nextState = 'showFixation';
                     return
                 else
@@ -376,7 +377,7 @@ classdef topsTreeNodeTaskAudio2AFCCP < topsTreeNodeTask
             self.randomizeWhenRepeating = false;
             
             
-            self.pauseScreen();
+            self.pauseScreen(true);
             
             % ---- Initialize the state machine
             %
@@ -412,11 +413,16 @@ classdef topsTreeNodeTaskAudio2AFCCP < topsTreeNodeTask
             valid_trials = 0;
             for t = 1:tot_trials
                 trial = self.trialData(t);
-                if isnan(trial.correct)
+                if isfield(trial, 'correct')
+                    if isnan(trial.correct)
+                        early_abort = true;
+                        break
+                    end
+                    valid_trials = valid_trials + 1;
+                else  % task aborted before first trial started
                     early_abort = true;
                     break
                 end
-                valid_trials = valid_trials + 1;
             end
             
             % store metadata
@@ -474,11 +480,11 @@ classdef topsTreeNodeTaskAudio2AFCCP < topsTreeNodeTask
                 subjBlockStruct;
             savejson('', fullMetaData, self.metadatafile);
             
-            % flush events for extraKeyboard
-            [nextEvent, ~] = self.extraKeyboard.getNextEvent();
-            while ~isempty(nextEvent)
-                [nextEvent, ~] = self.extraKeyboard.getNextEvent();
-            end
+%             % flush events for extraKeyboard
+%             [nextEvent, ~] = self.extraKeyboard.getNextEvent();
+%             while ~isempty(nextEvent)
+%                 [nextEvent, ~] = self.extraKeyboard.getNextEvent();
+%             end
         end
         
         %% Start trial
@@ -776,7 +782,7 @@ classdef topsTreeNodeTaskAudio2AFCCP < topsTreeNodeTask
         
         function pauseOn(self)
             trial = self.getTrial();
-            if trial.trialIndex ~= 103
+            if trial.trialIndex ~= self.midblock;
                 breakstr = 'Well done!!! Take a break if you wish.';
                 self.helpers.feedback.show('text', ...
                     {breakstr,  ...
@@ -786,7 +792,7 @@ classdef topsTreeNodeTaskAudio2AFCCP < topsTreeNodeTask
         end
         function pauseOff(self)
             trial = self.getTrial();
-            if trial.trialIndex ~= 103
+            if trial.trialIndex ~= self.midblock;
                 dotsTheScreen.blankScreen([0 0 0]);
             end
         end

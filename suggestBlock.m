@@ -35,6 +35,12 @@ if size(sessionsTable, 1) > 0
         nextPair = bseq{nextPairIndices(end)};
         % if last session was completed, flip block type, otherwise repeat
         lastBlockType = sessionsTable{end, 'BlockType'};
+        if iscell(lastBlockType)
+            if length(lastBlockType) > 1
+                error('cell should have at most length 1')
+            end
+            lastBlockType = lastBlockType{1};
+        end
         if sessionsTable{end, nextPair}
             if strcmp(lastBlockType, 'rep')
                 nextBlockType = 'pred';
