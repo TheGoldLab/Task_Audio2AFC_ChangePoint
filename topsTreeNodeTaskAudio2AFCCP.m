@@ -182,6 +182,59 @@ classdef topsTreeNodeTaskAudio2AFCCP < topsTreeNodeTask
             self = self@topsTreeNodeTask(varargin{:});
         end
         
+        %% Self paced break screen
+        function nextState = pauseScreen(self, beginning)
+            if ~beginning  % we are mid-block
+                trial = self.getTrial();
+                if trial.trialIndex ~= 103
+                    nextState = 'showFixation';
+                    return
+                else
+                    % ---- Check for event
+                    events = {'choseLeft','choseRight'};
+                    self.helpers.reader.theObject.setEventsActiveFlag(events)
+                    eventName = self.helpers.reader.readEvent(events);
+                    
+                    % Nothing... keep checking
+                    if isempty(eventName)
+                        nextState = [];
+                        return
+                    end
+                end
+            else
+                % ---- Activate event and check for it
+                %
+                events = {'choseLeft','choseRight'};
+                self.helpers.reader.theObject.setEventsActiveFlag(events)
+                eventName = self.helpers.reader.readEvent(events);
+                
+                % Nothing... keep checking
+                while isempty(eventName)
+                    
+                    self.helpers.feedback.show('text', ...
+                        {['You may start the next block by pressing', ...
+                        ' the B button.']}, ...
+                        'showDuration', 0.1, ...
+                        'blank', false);
+                    
+                    eventName = self.helpers.reader.readEvent(events);
+                end
+            end
+            
+            % a button has been pressed
+            if strcmp(eventName, 'choseLeft')  % abort whole experiment
+                self.helpers.feedback.show('text', ...
+                    {'Thanks again for your cooperation', ...
+                     'We wish you the best!'}, ...
+                    'showDuration', 1.5, ...
+                    'blank', true);
+                nextState = 'done';
+                self.abortStateMachine();
+            else  % carry on with task
+                nextState = 'showFixation';
+            end
+        end
+        
         
         function activateSkipKey(self)
             % only activate the skip button, i.e. s key
@@ -321,6 +374,9 @@ classdef topsTreeNodeTaskAudio2AFCCP < topsTreeNodeTask
             
             self.trialIterationMethod = 'sequential';  % enforce sequential
             self.randomizeWhenRepeating = false;
+            
+            
+            self.pauseScreen();
             
             % ---- Initialize the state machine
             %
@@ -717,7 +773,24 @@ classdef topsTreeNodeTaskAudio2AFCCP < topsTreeNodeTask
             end
             dotsTheScreen.blankScreen([0 0 0]);
         end
-    end
+        
+        function pauseOn(self)
+            trial = self.getTrial();
+            if trial.trialIndex ~= 103
+                breakstr = 'Well done!!! Take a break if you wish.';
+                self.helpers.feedback.show('text', ...
+                    {breakstr,  ...
+                    'To continue press RIGHT, to abort, press LEFT.'}, ...
+                    'blank', false);
+            end
+        end
+        function pauseOff(self)
+            trial = self.getTrial();
+            if trial.trialIndex ~= 103
+                dotsTheScreen.blankScreen([0 0 0]);
+            end
+        end
+        end
     
     methods (Access = protected)
         
@@ -906,6 +979,10 @@ classdef topsTreeNodeTaskAudio2AFCCP < topsTreeNodeTask
             ppst = {@prepareTutorialStates, self};
             showsc  = {@showTrueSource, self};
             xsm = {@abortStateMachine, self};
+            
+            pseon = {@pauseOn, self};
+            pseoff = {@pauseOff, self};
+            psechk = {@pauseScreen, self, false};
             % ---- Timing variables, read directly from the timing property struct
             %
             t = self.timing;
@@ -916,6 +993,7 @@ classdef topsTreeNodeTaskAudio2AFCCP < topsTreeNodeTask
             if self.isReportTask
                 states = {...
                     'name'              'entry'  'input'  'timeout'             'exit'     'next'            ; ...
+                    'midBlock'          pseon    psechk   1000000              pseoff       ''               ; ...
                     'showFixation'      showfx   {}       t.preStim             gwts       'playSound'       ; ...
                     'playSound'         plays1   {}       0                     mdfs       'earlyEvents'     ; ...
                     'earlyEvents'       evtwrn   {}       0                     {}         ''                ; ...
