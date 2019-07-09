@@ -164,6 +164,10 @@ classdef topsTreeNodeTaskAudio2AFCCP < topsTreeNodeTask
         targetDistance;
         
         trueSource;
+        
+        % additional readable object, useful to catch custom key presses
+        % to skip task or abort
+        extraKeyboard;
     end
     
     methods
@@ -223,14 +227,6 @@ classdef topsTreeNodeTaskAudio2AFCCP < topsTreeNodeTask
             % taskID
             [self.trialData.taskID] = deal(self.taskID);
             
-%             % condProbCP
-%             [self.trialData.hazard] = ...
-%                 deal(metaData.hazard);
-%             
-%             % condProbCP
-%             [self.trialData.meta_hazard] = ...
-%                 deal(metaData.meta_hazard);
-            
             trlist = num2cell(1:ntr);
             
             % trialIndex
@@ -255,12 +251,7 @@ classdef topsTreeNodeTaskAudio2AFCCP < topsTreeNodeTask
                 
                 % catch trial
                 if strcmp(trialsTable.isCatch(tr), 'True')
-%                     if self.isReportTask
-%                         self.trialData(tr).catch = 1.0; % numeric for FIRA
-%                     else
-%                         self.trialData(tr).catch = 0;
-%                     end
-                % FOR THIS VERSION OF THE TASK, DISABLE ALL CATCH TRIALS
+                    % FOR THIS VERSION OF THE TASK, DISABLE ALL CATCH TRIALS
                     self.trialData(tr).catch = 0;
                 else
                     self.trialData(tr).catch = 0;
@@ -316,11 +307,31 @@ classdef topsTreeNodeTaskAudio2AFCCP < topsTreeNodeTask
             %
             self.initializeStateMachine();
             
-            % ---- Show task-specific instructions
-            %
-%             self.helpers.feedback.show('text', self.settings.textStrings, ...
-%                 'showDuration', self.timing.showInstructions);
-%             pause(self.timing.waitAfterInstructions);
+            
+            % create additional keyboard readable
+            self.extraKeyboard = dotsReadableHIDKeyboard();
+            % define events
+            IDs = self.extraKeyboard.getComponentIDs();
+            for ii = 1:numel(IDs)
+                try
+                    self.extraKeyboard.defineEvent(self.extraKeyboard.components(ii).name, 'component', IDs(ii));
+                catch
+                    warning(['pb with ',self.extraKeyboard.components(ii).name])
+                end
+            end
+            
+            % only activate the skip button, i.e. s key
+            for i=1:length(self.extraKeyboard.eventDefinitions)
+                if strcmp(self.extraKeyboard.eventDefinitions(i).name, ...
+                        'KeyboardS')
+                    self.extraKeyboard.eventDefinitions(i).isActive = 1;
+                else
+                    self.extraKeyboard.eventDefinitions(i).isActive = 0;
+                end
+            end
+            
+            self.extraKeyboard.isAutoRead = true;  % not sure what this does
+            
         end
         
         %% Finish task (overloaded)
@@ -395,6 +406,12 @@ classdef topsTreeNodeTaskAudio2AFCCP < topsTreeNodeTask
             fullMetaData.(self.settings.subjectCode).(currSessionName).(self.name) = ...
                 subjBlockStruct;
             savejson('', fullMetaData, self.metadatafile);
+            
+            % flush events for extraKeyboard
+            [nextEvent, ~] = self.extraKeyboard.getNextEvent();
+            while ~isempty(nextEvent)
+                [nextEvent, ~] = self.extraKeyboard.getNextEvent();
+            end
         end
         
         %% Start trial
@@ -440,6 +457,15 @@ classdef topsTreeNodeTaskAudio2AFCCP < topsTreeNodeTask
         function finishTrial(self)
         end
         
+        function skipTrial(self)
+            eventName = self.extraKeyboard.getNextEvent();
+            if isempty(eventName)
+                self.stateMachine.editStateByName('skipCheck', 'next', 'showFixation');
+            else  % skip task
+                self.stateMachine.editStateByName('skipCheck', 'next', 'blankNoFeedback');
+            end
+        end
+        
         function earlyEventWarning(self, events)
             eventName = self.helpers.reader.readEvent(events, self, 'choiceTime');
 %             disp(eventName)
@@ -454,9 +480,7 @@ classdef topsTreeNodeTaskAudio2AFCCP < topsTreeNodeTask
                 self.setTrial(trial);
                 
                 self.stateMachine.editStateByName('earlyEvents', 'next', 'blankNoFeedback');
-%                 self.stateMachine.editStateByName('earlyEvents', 'exit', ...
-%                 {@draw,self.helpers.stimulusEnsemble, {[], 1}, self, 'fixationOff'});
-            
+
                 pause(0.1)
                 
                 self.helpers.stimulusEnsemble.draw({[], 1}, self, 'fixationOff');
@@ -466,13 +490,12 @@ classdef topsTreeNodeTaskAudio2AFCCP < topsTreeNodeTask
                     'showDuration', 4, ...
                     'blank', true);
             else
-%                 disp('entered no early event case')
                 if self.isCatch
                     self.stateMachine.editStateByName('earlyEvents', 'next', 'catchSound');
                 else
                     self.stateMachine.editStateByName('earlyEvents', 'next', 'waitForChoiceFX');
                 end
-%                 self.stateMachine.editStateByName('earlyEvents', 'exit', {});
+
             end
                       
             self.flushEventsQueue()
@@ -510,17 +533,6 @@ classdef topsTreeNodeTaskAudio2AFCCP < topsTreeNodeTask
             
             trial.choice = double(strcmp(eventName, 'choseRight'));
 
-            %
-            %             if trial.RT < 0 || isnan(trial.RT)
-            %                 % this whole block should be redundant now
-            %                 nextState = 'waitForReleasFX';
-            %                 pause(0.1)
-            %                 self.helpers.feedback.show('text', ...
-            %                     {'You answered too soon.', ...
-            %                      'Please wait until the cross turns blue.'}, ...
-            %                      'showDuration', 4, ...
-            %                      'blank', true);
-            %             else
             % Jump to next state when done
             if self.isCatch
                 nextState = 'waitForReleasFX';
@@ -556,22 +568,7 @@ classdef topsTreeNodeTaskAudio2AFCCP < topsTreeNodeTask
                     (trial.choice==1 && refSide==0));
                 
             end
-            %                 % ---- Possibly show smiley face
-            %                 if (trial.correct == 1) ...
-            %                         && (self.timing.showSmileyFace > 0) ...
-            %                         && (~self.isCatch) ...
-            %                         && (self.isReportTask || ...
-            %                         (~self.isReportTask && ~lastTrial))
-            %
-            %                     self.helpers.stimulusEnsemble.draw( ...
-            %                         {'isVisible', true, 3}, ...
-            %                         {'isVisible', false, [1 2 4]});
-            %                     pause(self.timing.showSmileyFace);
-            %                 end
-            %             end
-            
-            
-            
+
             % ---- Re-save the trial
             %
             self.setTrial(trial);
@@ -623,17 +620,7 @@ classdef topsTreeNodeTaskAudio2AFCCP < topsTreeNodeTask
                 trial.catchChoiceOpposite = 0;
             end
             self.setTrial(trial)
-%             totTrials = numel(self.trialData);
-%             isLastTrial = (totTrials == trial.trialIndex);
-%             skipFb = ~self.isReportTask && isLastTrial;  
-%             
-%             % ---- Possibly show smiley face
-%             if trial.correct == 1 && self.timing.showSmileyFace > 0 ...
-%                     && ~skipFb
-%                 self.helpers.stimulusEnsemble.draw({3, [1 2 4]});
-%                 pause(self.timing.showSmileyFace);
-%             end
-%             
+    
         end
         %% Check for direction choice trigger Release
         %
@@ -641,9 +628,6 @@ classdef topsTreeNodeTaskAudio2AFCCP < topsTreeNodeTask
         function nextState = checkForReleaseDirChoice(self, events, eventTag)
             
             % ---- Check for event
-            %
-%             self.helpers.reader.theObject.flushData()
-%             self.helpers.reader.theObject.setEventsActiveFlag(events)
             eventName = self.helpers.reader.readEvent(events, self, eventTag);
             
             % Nothing... keep checking
@@ -674,24 +658,6 @@ classdef topsTreeNodeTaskAudio2AFCCP < topsTreeNodeTask
             %  Check for RT feedback
             RTstr = '';
             imageIndex = self.settings.correctImageIndex;
-%             if self.name(1) == 'S'
-%                 
-%                 % Check current RT relative to the reference value
-%                 if isa(self.settings.referenceRT, 'topsTreeNodeTaskRTDots')
-%                     RTRefValue = self.settings.referenceRT.settings.referenceRT;
-%                 else
-%                     RTRefValue = self.settings.referenceRT;
-%                 end
-%                 
-%                 if isfinite(RTRefValue)
-%                     if trial.RT <= RTRefValue
-%                         RTstr = ', in time';
-%                     else
-%                         RTstr = ', try to decide faster';
-%                         imageIndex = self.settings.errorTooSlowImageIndex;
-%                     end
-%                 end
-%             end
             
             % Set up feedback based on outcome
             if trial.correct == 1
@@ -725,25 +691,9 @@ classdef topsTreeNodeTaskAudio2AFCCP < topsTreeNodeTask
             self.updateStatus(2); % just update the second one
             
            
-            totTrials = numel(self.trialData);
-            isLastTrial = (totTrials == trial.trialIndex);
-%             skipFb = ~self.isReportTask && isLastTrial;
             skipFb = false;
             
-%             % ---- Possibly show smiley face
-%             if (trial.correct == 1) ...
-%                     && (self.timing.showSmileyFace > 0) ...
-%                     && (~self.isCatch) ...
-%                     && (self.isReportTask || ...
-%                     (~self.isReportTask && ~lastTrial))
-%                 
-%                 self.helpers.stimulusEnsemble.draw( ...
-%                     {'isVisible', true, 3}, ...
-%                     {'isVisible', false, [1 2 4]});
-%                 pause(self.timing.showSmileyFace);
-%             end
-            
-            
+           
             % --- Show trial feedback on the screen
             %
             if self.timing.showSmileyFace > 0 && ~skipFb
@@ -860,12 +810,9 @@ classdef topsTreeNodeTaskAudio2AFCCP < topsTreeNodeTask
         end
         
         function flushEventsQueue(self)
-%             disp('flushing event queue')
             [nextEvent, ~] = self.helpers.reader.theObject.getNextEvent();
-%             disp(nextEvent)
             while ~isempty(nextEvent)
                 [nextEvent, ~] = self.helpers.reader.theObject.getNextEvent();
-%                 disp(nextEvent)
             end
         end
         
@@ -929,13 +876,9 @@ classdef topsTreeNodeTaskAudio2AFCCP < topsTreeNodeTask
             wtng = {@dispWaintingText1, self, 'waiting for response'};
             gdby = {@dispWaintingText1, self, 'good bye'};
             mssfb = {@missFeedback, self};
-            % drift correction
-%             hfdc  = {@reset, self.helpers.reader.theObject, true};
-            
+
             % Activate/deactivate readable events
             sea   = @setEventsActiveFlag;
-%             gwfxw = {sea, self.helpers.reader.theObject, 'holdFixation'};
-%             gwfxh = {};
 
             % activate left/right choices events
             gwts  = {sea, self.helpers.reader.theObject, {'choseLeft', 'choseRight'}};
@@ -944,7 +887,7 @@ classdef topsTreeNodeTaskAudio2AFCCP < topsTreeNodeTask
             flsh = {@flushData, self.helpers.reader.theObject};
             dque = {@flushEventsQueue, self};
             evtwrn = {@earlyEventWarning, self, {'choseLeft', 'choseRight'}};
-            
+            skcheck = {@skipTrial, self};
             ppst = {@prepareTutorialStates, self};
             showsc  = {@showTrueSource, self};
 
@@ -958,6 +901,7 @@ classdef topsTreeNodeTaskAudio2AFCCP < topsTreeNodeTask
             if self.isReportTask
                 states = {...
                     'name'              'entry'  'input'  'timeout'             'exit'     'next'            ; ...
+                    'skipCheck'         skcheck  {}       0                     {}         ''                ; ...
                     'showFixation'      showfx   {}       t.preStim             gwts       'playSound'       ; ...
                     'playSound'         plays1   {}       0                     mdfs       'earlyEvents'     ; ...
                     'earlyEvents'       evtwrn   {}       0                     {}         ''                ; ...
@@ -971,24 +915,6 @@ classdef topsTreeNodeTaskAudio2AFCCP < topsTreeNodeTask
                     'blankNoFeedback'   {}       {}       0                     blanks     'done'            ; ...
                     'done'              dnow     {}       t.interTrialInterval  {}         ''                ; ...
                     };
-%             elseif strcmp(self.name, 'TutPrediction')
-%                 states = {...
-%                     'name'              'entry'  'input'  'timeout'             'exit'     'next'            ; ...
-%                     'prepareStates'     ppst     {}       0                     {}         'showFixation'    ; ...
-%                     'showFixation'      showfx   {}       t.preStim             gwts       'waitForChoiceFX'       ; ...
-%                     'waitForChoiceFX'   {}       chkuic   t.choiceTimeout       pdbr       'blank'           ; ...
-%                     'waitForReleasFX'   {}       chkuic2  t.choiceTimeout       dque       ''                ; ...
-%                     'secondChoice'      {}       chkuic3  t.choiceTimeout       {}         'blank'           ; ...
-%                     'showSource'        showsc   {}       0                     {}         'delay'           ; ...
-%                     'delay'             {}       {}       .5                    {}         'playSound'       ; ...
-%                     'playSound'         plays1   {}       0                     mdfs       ''                ; ...
-% %                     'earlyEvents'       evtwrn   {}       0                     {}         ''                ; ...
-%                     'catchSound'        plays2   {}       0                     rsts       'blank'           ; ...
-%                     'blank'             hided    {}       0.2                   {}         'showFeedback'    ; ...
-%                     'showFeedback'      showfb   {}       t.showFeedback        blanks     'done'            ; ...
-%                     'blankNoFeedback'   {}       {}       0                     blanks     'done'            ; ...
-%                     'done'              dnow     {}       0                     {}         ''                ; ...
-%                     };
             else  % prediction block
                 states = {...
                     'name'              'entry'  'input'  'timeout'             'exit'     'next'            ; ...
@@ -1007,19 +933,8 @@ classdef topsTreeNodeTaskAudio2AFCCP < topsTreeNodeTask
                     };
             end
             % ---- Set up ensemble activation list. This determines which
-            %        states will correspond to automatic, repeated calls to
-            %        the given ensemble methods
-            %
-            % See topsActivateEnsemblesByState for details.
             activeList = [];
-%             {{ ...
-%                 self.helpers.stimulusEnsemble.theObject, 'draw'; ...
-%                 self.helpers.screenEnsemble.theObject, 'flip'}, ...
-%                 {'preDots'}};
-            
-            % --- List of children to add to the stateMachineComposite
-            %        (the state list above is added automatically)
-            %
+
             compositeChildren = { ...
                 self.helpers.stimulusEnsemble.theObject, ...
                 self.helpers.screenEnsemble.theObject};
@@ -1032,42 +947,12 @@ classdef topsTreeNodeTaskAudio2AFCCP < topsTreeNodeTask
     methods (Static)
         
         %% ---- Utility for defining standard configurations
-        %
-        % name is string:
-        %  'Quest' for adaptive threshold procedure
-        %  or '<SAT><BIAS>' tag, where:
-        %     <SAT> is 'N' for neutral, 'S' for speed, 'A' for accuracy
-        %     <BIAS> is 'N' for neutral, 'L' for left more likely, 'R' for
-        %     right more likely
         function task = getStandardConfiguration(name, varargin)
             
             % ---- Get the task object, with optional property/value pairs
             %
             task = topsTreeNodeTaskAudio2AFCCP(name, varargin{:});
-            
-%             % ---- Instruction settings, by column:
-%             %  1. tag (first character of name)
-%             %  2. Text string #1
-%             %  3. RTFeedback flag
-%             %
-%             SATsettings = { ...
-%                 'S' 'Be as FAST as possible.'                 task.settings.referenceRT; ...
-%                 'A' 'Be as ACCURATE as possible.'             nan;...
-%                 'N' 'Be as FAST and ACCURATE as possible.'    nan};
-%             
-%             dp = task.settings.directionPriors;
-%             BIASsettings = { ...
-%                 'L' 'Left is more likely.'                    [max(dp) min(dp)]; ...
-%                 'R' 'Right is more likely.'                   [min(dp) max(dp)]; ...
-%                 'N' 'Both directions are equally likely.'     [50 50]};
-%                     
-%             % ---- Set strings, priors based on type
-%             %
-%             Lsat  = strcmp(name(1), SATsettings(:,1));
-%             Lbias = strcmp(name(2), BIASsettings(:,1));
-%             task.settings.textStrings = {SATsettings{Lsat, 2}, BIASsettings{Lbias, 2}};
-%             task.settings.referenceRT = SATsettings{Lsat, 3};
-% %             task.setIndependentVariableByName('direction', 'priors', BIASsettings{Lbias, 3});
+
         end
     end
 end

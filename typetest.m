@@ -5,7 +5,7 @@ clear all;
 tic;
 timekeeper = 0;
 %kb = dotsReadableHIDKeyboard();
-kb=dotsReadableHIDButtons();
+kb=dotsReadableHIDKeyboard();
 IDs = kb.getComponentIDs();
 for ii = 1:numel(IDs)
     try
