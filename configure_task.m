@@ -25,9 +25,8 @@ name = 'Audio2AFC_CP';
 
 % Other defaults
 settings = { ...
-    'taskSpecs',                  {'CP' 1}, ...
-    'runGUIname',                 'eyeGUI', ...
-    'databaseGUIname',            [], ...
+    'taskSpecs',                  {},...
+    'type',                       'rep', ...
     'remoteDrawing',              false, ...
     'instructionDuration',        0, ...
     'displayIndex',               0, ... % 0=small, 1=main
@@ -48,11 +47,17 @@ settings = { ...
 
 % Update from argument list (property/value pairs)
 for ii = 1:2:nargin
-    settings{find(strcmp(varargin{ii}, settings),1) + 1} = varargin{ii+1};
+    settings = setval(settings, varargin{ii}, varargin{ii+1});
 end
 
-if settings{find(strcmp('predictSource',settings))+1} + ...
-        settings{find(strcmp('isReport',settings))+1} == 2
+type = access(settings, 'type');
+
+if strcmp(type, 'pred')
+    settings = setval(settings, 'isReport', false);
+    settings = setval(settings, 'predictSource', true);
+end
+
+if access(settings, 'predictSource') + access(settings, 'isReport') == 2
     error('should not be both a report and a prediction block')
 end
 
@@ -69,8 +74,8 @@ topNode.nodeData = topsGroupedList.createGroupFromList('Settings', settings);
 % running and some real-time output of eye position. The "database gui" is
 % a series of dialogs that execute at the beginning to collect subject/task
 % information and store it in a standard format.
-topNode.addGUIs('run', topNode.nodeData{'Settings'}{'runGUIname'}, ...
-    'database', topNode.nodeData{'Settings'}{'databaseGUIname'});
+% topNode.addGUIs('run', topNode.nodeData{'Settings'}{'runGUIname'}, ...
+%     'database', topNode.nodeData{'Settings'}{'databaseGUIname'});
 
 % Add the screen ensemble as a "helper" object. See
 % topsTaskHelperScreenEnsemble for details
@@ -116,28 +121,36 @@ for index = 1:size(strs,1)
     end
 end
 
-% Countdown call list
-callStrings = cell(10, 1);
-for ii = 1:10
-    callStrings{ii} = {'string', sprintf('Next task starts in: %d', 10-ii+1), 'y', -9};
-end
-
-
 %% ---- Loop through the task specs array, making tasks with appropriate arg lists
 %
 taskSpecs = topNode.nodeData{'Settings'}{'taskSpecs'};
 noDots    = true;
 
+blockList = readDefaultPairSequence();
+num_pairs = length(blockList);
+blockList{num_pairs + 1} = 'TutReport';
+blockList{num_pairs + 2} = 'TutPrediction';
+
 taskCounter =1;
-for ii = 1:2:length(taskSpecs)
+for ii = 1:2
+    if ii == 1 && strcmp(type, 'rep')
+        trialIter = 10; % tutorial report
+    elseif ii == 1 && strcmp(type, 'pred')
+        tialIter = 40;  % tutorial prediction
+    else
+        trialIter = 205;  % task
+        topNode.nodeData{'Settings'}{'showFeedback'} = 0;
+        topNode.nodeData{'Settings'}{'showSmileyFace'} = 0;
+    end
+    blockName = taskSpecs{1}{ii};
     % Make list of properties to send
-    args = {taskSpecs{ii}, ...   
-        'trialIterations',                  taskSpecs{ii+1}, ...
+    args = {blockName, ...   
+        'trialIterations',                  trialIter, ...
         {'timing',   'showInstructions'},   topNode.nodeData{'Settings'}{'instructionDuration'}, ...
         {'timing',   'showFeedback'},       topNode.nodeData{'Settings'}{'showFeedback'}, ...
         {'timing',   'showSmileyFace'},     topNode.nodeData{'Settings'}{'showSmileyFace'}, ...
         'taskID',                           taskCounter, ...
-        'taskTypeID',  find(strcmp(taskSpecs{ii}, {'Block1'}),1)};
+        'taskTypeID',  firstmatch(blockList, blockName)};
     
    
     % Make Audio2AFCCP task with args
@@ -152,13 +165,13 @@ for ii = 1:2:length(taskSpecs)
         noDots = false;
     end
     
-    trial_folder = topNode.nodeData{'Settings'}{'trialFolder'};
+    trial_folder = [blockName, '/'];
     % Special case of quest ... use output as coh/RT refs
 
     task.trialSettings.loadFromFile = true;
-    task.trialSettings.numTrials = taskSpecs{ii+1};
-    task.trialSettings.csvFile = [trial_folder, taskSpecs{ii}, '.csv'];
-    task.trialSettings.jsonFile = [trial_folder, taskSpecs{ii}, '_metadata.json'];
+    task.trialSettings.numTrials = trialIter;
+    task.trialSettings.csvFile = [trial_folder, blockName, '.csv'];
+    task.trialSettings.jsonFile = [trial_folder, blockName, '_metadata.json'];
     task.setReportProperty(topNode.nodeData{'Settings'}{'isReport'})
     task.setPredictNextSourceProperty(topNode.nodeData{'Settings'}{'predictSource'});
     % Add as child to the maintask.

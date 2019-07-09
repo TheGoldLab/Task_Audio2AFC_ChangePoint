@@ -1,5 +1,5 @@
 {
-	"TEST": {
+	"HUP_TEST": {
 		"session1": {
 			"pair": "Block001",
 			"sessionTag": "2019_06_20_12_54",
@@ -11,6 +11,70 @@
 			},
 			"Block001": {
 				"type": "rep",
+				"completed": 1,
+				"aborted": 0,
+				"numTrials": 205
+			}
+		},
+        "session2": {
+			"pair": "Block001",
+			"sessionTag": "2019_07_20_12_54",
+			"TutPrediction": {
+				"type": "pred",
+				"completed": 1,
+				"aborted": 0,
+				"numTrials": 20
+			},
+			"Block001": {
+				"type": "pred",
+				"completed": 1,
+				"aborted": 0,
+				"numTrials": 205
+			}
+		},
+        "session3": {
+			"pair": "Block005",
+			"sessionTag": "2019_07_21_12_54",
+			"TutReport": {
+				"type": "rep",
+				"completed": 1,
+				"aborted": 0,
+				"numTrials": 20
+			},
+			"Block005": {
+				"type": "rep",
+				"completed": 0,
+				"aborted": 0,
+				"numTrials": 25
+			}
+		},
+        "session4": {
+			"pair": "Block005",
+			"sessionTag": "2019_07_22_12_54",
+			"TutReport": {
+				"type": "rep",
+				"completed": 1,
+				"aborted": 0,
+				"numTrials": 20
+			},
+			"Block005": {
+				"type": "rep",
+				"completed": 1,
+				"aborted": 0,
+				"numTrials": 205
+			}
+		},
+        "session5": {
+			"pair": "Block005",
+			"sessionTag": "2019_08_20_12_54",
+			"TutPrediction": {
+				"type": "pred",
+				"completed": 1,
+				"aborted": 0,
+				"numTrials": 20
+			},
+			"Block005": {
+				"type": "pred",
 				"completed": 1,
 				"aborted": 0,
 				"numTrials": 205

@@ -24,10 +24,10 @@ classdef topsTreeNodeTaskAudio2AFCCP < topsTreeNodeTask
         
         % settings about the trial sequence to use
         trialSettings = struct( ...
-            'numTrials',        400, ... % theoretical number of valid trials per block
+            'numTrials',        205, ... % theoretical number of valid trials per block
             'loadFromFile',     true,      ... % load trial sequence from files?
-            'csvFile',          'Blocks001/Block1.csv',  ... % file of the form filename.csv
-            'jsonFile',         'Blocks001/Block1_metadata.json');  ... % file of the form filename_metadata.json
+            'csvFile',          'Block001/Block001.csv',  ... % file of the form filename.csv
+            'jsonFile',         'Block001/Block001_metadata.json');  ... % file of the form filename_metadata.json
             
         % Timing properties, referenced in statelist
         timing = struct( ...
@@ -318,6 +318,61 @@ classdef topsTreeNodeTaskAudio2AFCCP < topsTreeNodeTask
         % Put stuff here that you want to do after each time you run this
         % task
         function finishTask(self)
+            
+            % store metadata
+
+            % first get the session struct
+            fullMetaData = loadjson(self.metadatafile);
+            tmpStruct=fullMetaData.(self.settings.subjectCode);
+            if isempty(tmpStruct)
+                lastSessionName = 'session0';
+            else
+                allSessions = fieldnames(tmpStruct);
+                lastSessionName = allSessions{end};
+            end
+            
+            if self.taskID == 1  
+                % for first block in session, create struct
+                currSessionName = [lastSessionName(1:end-1),...
+                    num2str(str2double(lastSessionName(end))+1)];
+               
+                fullMetaData.(self.settings.subjectCode).(currSessionName) = struct();
+                
+                fullMetaData.(self.settings.subjectCode).(currSessionName).trialFolder = self.name;
+                stg = self.caller.filename(end-31:end-16);
+                fullMetaData.(self.settings.subjectCode).(currSessionName).sessionTag = stg;
+                
+            else
+                currSessionName = lastSessionName;
+            end
+            subjStruct = fullMetaData.(self.settings.subjectCode);
+            
+            % initialize block struct
+            subjStruct.(currSessionName).(self.name) = struct();
+            subjBlockStruct = subjStruct.(currSessionName).(self.name);
+            
+            if strcmp(self.name(1:3), 'Tut')
+                iscomplete = valid_trials > 0;
+            else
+                iscomplete = block_reward > 0;
+            end
+            
+            % then fill out the struct with task data
+            subjBlockStruct.completed = iscomplete; 
+            subjBlockStruct.aborted = early_abort;
+            subjBlockStruct.reward = block_reward;
+            subjBlockStruct.numTrials = valid_trials;
+            
+            % write Quest parameters if completed:
+            if strcmp(self.name, 'Quest') && iscomplete
+                psiParamsIndex = qpListMaxArg(self.quest.posterior);
+                subjBlockStruct.QuestFit = self.quest.psiParamsDomain(psiParamsIndex,:);
+            end
+            
+            % then save back struct to metadata file
+            fullMetaData.(self.settings.subjectCode).(currSessionName).(self.name) = ...
+                subjBlockStruct;
+            savejson('', fullMetaData, self.metadatafile);
         end
         
         %% Start trial
