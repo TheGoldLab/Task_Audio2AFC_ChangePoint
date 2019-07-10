@@ -103,7 +103,7 @@ end
 
 % Add writable (TTL out). See topsTaskHelperTTL for details.
 if topNode.nodeData{'Settings'}{'sendTTLs'}
-    topNode.addHelpers('TTL');
+    topNode.addHelpers('TTL', @dotsWritableDOutLabJack);
 end
 
 %% ---- Make call lists to show text/images between tasks
