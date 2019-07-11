@@ -16,7 +16,7 @@ function [tab, seqType] = subjSummary(subjcode, filename)
 if nargin == 0 || isempty(subjcode)
     subjcode = getSubjectCode();
 elseif ~isempty(subjcode) && ~strcmp(subjcode(1:3), 'HUP') 
-    subjcode = ['HUP_', subjcode];
+    subjcode = ['HUP', subjcode];
 end
 
 % read metadata file

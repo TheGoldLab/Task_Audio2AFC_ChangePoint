@@ -32,7 +32,12 @@ if size(sessionsTable, 1) > 0
     else
         % repeat same pair as last session
         nextPairIndices = find(sum(sessionsTable{:,1:length(bseq)}), 1);
-        nextPair = bseq{nextPairIndices(end)};
+        if isempty(nextPairIndices)
+            idxx= 1;
+        else
+            idxx = nextPairIndices(end);
+        end
+        nextPair = bseq{idxx};
         % if last session was completed, flip block type, otherwise repeat
         lastBlockType = sessionsTable{end, 'BlockType'};
         if iscell(lastBlockType)
@@ -83,7 +88,8 @@ else  % subject is new and new entry should be created in metadata file
         bparams = 'pred';
         bsqCell = {'TutPrediction', bseq{1}};
     end
-      originalFile = loadjson('subj_metadata.json');
+    
+    originalFile = loadjson('subj_metadata.json');
     originalFile.(sc) = struct('seqType', seqType);
     savejson('', originalFile, 'subj_metadata.json');
 end

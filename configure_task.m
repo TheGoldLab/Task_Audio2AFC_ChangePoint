@@ -25,7 +25,7 @@ name = 'Audio2AFC_CP';
 
 % Other defaults
 settings = { ...
-    'taskSpecs',                  {},...
+    'taskSpecs',                  {{'TutReport', 'Block001'}, 'rep'},...
     'subjectCode',                '', ...
     'type',                       'rep', ...
     'remoteDrawing',              false, ...
@@ -68,7 +68,7 @@ end
 %
 % Make the topsTreeNodeTopNode
 topNode = topsTreeNodeTopNode(name);
-
+topNode.closingMessage = '';
 % Add a topsGroupedList as the nodeData, which here just stores the
 % property/value "settings" we use to control task behaviors
 topNode.nodeData = topsGroupedList.createGroupFromList('Settings', settings);
@@ -183,4 +183,5 @@ for ii = 1:2
     
     % Add as child to the maintask.
     topNode.addChild(task);
+    taskCounter = taskCounter + 1;
 end

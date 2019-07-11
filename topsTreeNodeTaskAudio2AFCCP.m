@@ -145,7 +145,7 @@ classdef topsTreeNodeTaskAudio2AFCCP < topsTreeNodeTask
              'start',                      {{@nullfunc}}))));
          
         metadatafile = 'subj_metadata.json';
-        midblock = 3;  % should be 103 for 205-trial blocks
+        midblock = 3;  % should be 103 for 205-trial blocks, in any case, should be larger than the longest tutorial
     end
     
     properties (SetAccess = protected)
@@ -183,17 +183,18 @@ classdef topsTreeNodeTaskAudio2AFCCP < topsTreeNodeTask
             self = self@topsTreeNodeTask(varargin{:});
         end
         
-        %% Self paced break screen
+        %% pauseScreen
         function nextState = pauseScreen(self, beginning)
-            if ~beginning  % we are mid-block
+            if ~beginning  % we are within the state machine iteration
                 trial = self.getTrial();
-                if trial.trialIndex ~= self.midblock;
+                if trial.trialIndex ~= self.midblock;  % start trial
                     nextState = 'showFixation';
                     return
-                else
-                    % ---- Check for event
+                else                       % wait for subject's trigger
+%                     fprintf('pauseScreen waiting for trigger')
+%                     fprintf(char(10))
                     events = {'choseLeft','choseRight'};
-                    self.helpers.reader.theObject.setEventsActiveFlag(events)
+                    
                     eventName = self.helpers.reader.readEvent(events);
                     
                     % Nothing... keep checking
@@ -201,8 +202,17 @@ classdef topsTreeNodeTaskAudio2AFCCP < topsTreeNodeTask
                         nextState = [];
                         return
                     end
+                    % if this line of code is reached, then continues
+                    % outside of the outter 'if' block
                 end
             else
+               
+                if self.taskID == 1
+                    blockString = 'Tutorial block';
+                else
+                    blockString = 'Task block';
+                end
+                
                 % ---- Activate event and check for it
                 %
                 events = {'choseLeft','choseRight'};
@@ -211,10 +221,10 @@ classdef topsTreeNodeTaskAudio2AFCCP < topsTreeNodeTask
                 
                 % Nothing... keep checking
                 while isempty(eventName)
-                    
                     self.helpers.feedback.show('text', ...
-                        {['You may start the next block by pressing', ...
-                        ' the B button.']}, ...
+                        {blockString, ...
+                        ['You may start by pressing', ...
+                        ' the RIGHT button.']}, ...
                         'showDuration', 0.1, ...
                         'blank', false);
                     
@@ -223,26 +233,36 @@ classdef topsTreeNodeTaskAudio2AFCCP < topsTreeNodeTask
             end
             
             % a button has been pressed
-            if strcmp(eventName, 'choseLeft')  % abort whole experiment
-                self.helpers.feedback.show('text', ...
-                    {'Thanks again for your cooperation', ...
-                     'We wish you the best!'}, ...
-                    'showDuration', 1.5, ...
-                    'blank', true);
-                nextState = 'done';
-                self.abortStateMachine();
+            if strcmp(eventName, 'choseLeft')  % skip block
+                if self.taskID == 1
+                    self.helpers.feedback.show('text', ...
+                        {'Skipping tutorial'}, ...
+                        'showDuration', 1.5, ...
+                        'blank', true);
+                    nextState = 'done';                    
+                else
+                    self.helpers.feedback.show('text', ...
+                        {'Thanks again for your cooperation', ...
+                        'We wish you the best!'}, ...
+                        'showDuration', 1.5, ...
+                        'blank', true);
+                    nextState = 'done';
+                end
+                
+                self.skipTask();
             else  % carry on with task
                 nextState = 'showFixation';
             end
+            self.flushEventsQueue();
         end
         
-        
+        %% activateSkipKey
         function activateSkipKey(self)
             % only activate the skip button, i.e. s key
             for i=1:length(self.extraKeyboard.eventDefinitions)
                 if strcmp(self.extraKeyboard.eventDefinitions(i).name, ...
                         'KeyboardS')
-                    disp('activating S keyboard key')
+%                     disp('activating S keyboard key')
                     self.extraKeyboard.eventDefinitions(i).isActive = 1;
                 else
                     self.extraKeyboard.eventDefinitions(i).isActive = 0;
@@ -250,10 +270,13 @@ classdef topsTreeNodeTaskAudio2AFCCP < topsTreeNodeTask
             end
         end
         
-        function abortStateMachine(self)
+        %% skipTask
+        function skipTask(self)
             % abort the task from within the state machine
-               self.finish();
-%                self.stateMachine.isRunning = false;
+            
+            self.flushEventsQueue(true)
+            
+            self.abort();
         end
         
         function setReportProperty(self, boolVal)
@@ -338,6 +361,8 @@ classdef topsTreeNodeTaskAudio2AFCCP < topsTreeNodeTask
         % Put stuff here that you want to do before each time you run this
         % task
         function startTask(self)
+%             fprintf('starting task %s with ID %d', self.name, self.taskID)
+%             fprintf(char(10))
             % manually add dummy events related to x and y directions of
             % directional cross on gamepad
             readableObj = self.helpers.reader.theObject;
@@ -376,13 +401,10 @@ classdef topsTreeNodeTaskAudio2AFCCP < topsTreeNodeTask
             self.trialIterationMethod = 'sequential';  % enforce sequential
             self.randomizeWhenRepeating = false;
             
-            
-            self.pauseScreen(true);
-            
+           
             % ---- Initialize the state machine
             %
             self.initializeStateMachine();
-            
             
             % create additional keyboard readable
             self.extraKeyboard = dotsReadableHIDKeyboard();
@@ -400,6 +422,7 @@ classdef topsTreeNodeTaskAudio2AFCCP < topsTreeNodeTask
             
             self.extraKeyboard.isAutoRead = true;  % not sure what this does
             
+            self.pauseScreen(true);
         end
         
         %% Finish task (overloaded)
@@ -407,7 +430,8 @@ classdef topsTreeNodeTaskAudio2AFCCP < topsTreeNodeTask
         % Put stuff here that you want to do after each time you run this
         % task
         function finishTask(self)
-            
+%             fprintf('finishing task %s with ID %d', self.name, self.taskID)
+%             fprintf(char(10))
             early_abort = false;
             tot_trials = numel(self.trialData);
             valid_trials = 0;
@@ -459,11 +483,9 @@ classdef topsTreeNodeTaskAudio2AFCCP < topsTreeNodeTask
             subjStruct.(currSessionName).(self.name) = struct();
             subjBlockStruct = subjStruct.(currSessionName).(self.name);
             
-            if strcmp(self.name(1:3), 'Tut')
-                iscomplete = valid_trials > 0;
-            else
-                iscomplete = ~early_abort;
-            end
+
+            iscomplete = ~early_abort;
+
             
             % then fill out the struct with task data
             if self.isReportTask
@@ -782,19 +804,39 @@ classdef topsTreeNodeTaskAudio2AFCCP < topsTreeNodeTask
         
         function pauseOn(self)
             trial = self.getTrial();
-            if trial.trialIndex ~= self.midblock;
+            if trial.trialIndex == self.midblock
+%                 fprintf('pauseOn on trial %d', trial.trialIndex)
+%                 fprintf(char(10))
                 breakstr = 'Well done!!! Take a break if you wish.';
-                self.helpers.feedback.show('text', ...
-                    {breakstr,  ...
-                    'To continue press RIGHT, to abort, press LEFT.'}, ...
-                    'blank', false);
+                continuestr = 'to continue press RIGHT';
+                abortstr = 'To abort, press LEFT';
+                a = dotsDrawableText.makeEnsemble('midblockPause', 3, 3);
+                a.objects{1}.string = breakstr;
+                a.objects{2}.string = continuestr;
+                a.objects{3}.string = abortstr;
+                
+                self.helpers.reader.theObject.setEventsActiveFlag({'choseLeft', 'choseRight'})
+                name = self.helpers.reader.readEvent({'choseLeft', 'choseRight'});
+                while isempty(name)
+                    name = self.helpers.reader.readEvent({'choseLeft', 'choseRight'});
+                    dotsDrawable.drawFrame(a.objects, false);         
+                end
+                
+%                 dotsDrawableText.drawEnsemble(a, {breakstr, continuestr, abortstr});
+
+                %                 self.helpers.feedback.show('text', ...
+                %                     {''}, ...
+%                     'blank', false);
+                
             end
+            self.flushEventsQueue();
         end
         function pauseOff(self)
             trial = self.getTrial();
-            if trial.trialIndex ~= self.midblock;
+            if trial.trialIndex == self.midblock;
                 dotsTheScreen.blankScreen([0 0 0]);
             end
+            self.flushEventsQueue();
         end
         end
     
@@ -903,10 +945,23 @@ classdef topsTreeNodeTaskAudio2AFCCP < topsTreeNodeTask
                 'blank', true);
         end
         
-        function flushEventsQueue(self)
+        function flushEventsQueue(self, extra)
+            if nargin < 2
+                extra = false;
+            end
+            
+            % flush queue in helper's readable
             [nextEvent, ~] = self.helpers.reader.theObject.getNextEvent();
             while ~isempty(nextEvent)
                 [nextEvent, ~] = self.helpers.reader.theObject.getNextEvent();
+            end
+            
+            if extra
+                % flush extra keyboard writable
+                [nextEvent, ~] = self.extraKeyboard.getNextEvent();
+                while ~isempty(nextEvent)
+                    [nextEvent, ~] = self.extraKeyboard.getNextEvent();
+                end
             end
         end
         
@@ -984,7 +1039,7 @@ classdef topsTreeNodeTaskAudio2AFCCP < topsTreeNodeTask
             skcheck = {@skipTrial, self};
             ppst = {@prepareTutorialStates, self};
             showsc  = {@showTrueSource, self};
-            xsm = {@abortStateMachine, self};
+            xsm = {@skipTask, self};
             
             pseon = {@pauseOn, self};
             pseoff = {@pauseOff, self};
@@ -1018,6 +1073,7 @@ classdef topsTreeNodeTaskAudio2AFCCP < topsTreeNodeTask
             else  % prediction block
                 states = {...
                     'name'              'entry'  'input'  'timeout'             'exit'     'next'            ; ...
+                    'midBlock'          pseon    psechk   1000000              pseoff       ''               ; ...
                     'showFixation'      showfxp   {}      t.preStim             gwts       'waitForChoiceFX'       ; ...
                     'waitForChoiceFX'   {}       chkuic   t.choiceTimeout       pdbr       'blank'           ; ...
 %                     'waitForReleasFX'   {}       chkuic2  t.choiceTimeout       dque       ''                ; ...
