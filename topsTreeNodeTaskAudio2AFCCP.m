@@ -676,6 +676,9 @@ classdef topsTreeNodeTaskAudio2AFCCP < topsTreeNodeTask
                 
                 % Override completedTrial flag
                 self.completedTrial = true;
+%                 if trial.trialIndex == 41
+%                     disp('trial 41 set to complete')
+%                 end
             end
             
             % Mark as correct/error
@@ -684,8 +687,6 @@ classdef topsTreeNodeTaskAudio2AFCCP < topsTreeNodeTask
                     (trial.choice==0 && trial.direction==180) || ...
                     (trial.choice==1 && trial.direction==0));
             else
-                
-                
                 if self.isPredictNextSource
                     refSide = trial.source;  % predict next source
                 else
@@ -696,7 +697,6 @@ classdef topsTreeNodeTaskAudio2AFCCP < topsTreeNodeTask
                 trial.correct = double( ...
                     (trial.choice==0 && refSide==180) || ...
                     (trial.choice==1 && refSide==0));
-                
             end
 
             % ---- Re-save the trial
@@ -793,17 +793,17 @@ classdef topsTreeNodeTaskAudio2AFCCP < topsTreeNodeTask
                 self.helpers.feedback.show(feedbackArgs{:});
                 dotsTheScreen.blankScreen([0 0 0]);
             elseif trial.trialIndex == 21
-                feedbackStr = 'Real sequence';
+                feedbackStr = 'Example of real sequence of sources';
                 feedbackArgs = {'text', feedbackStr, 'showDuration', 4};
                 self.helpers.feedback.show(feedbackArgs{:});
                 dotsTheScreen.blankScreen([0 0 0]);
             elseif trial.trialIndex == 41
-                feedbackStr = 'Predict the SOURCE as best as you can';
+                feedbackStr = 'Now predict the SOURCE as best as you can';
                 feedbackArgs = {'text', feedbackStr, 'showDuration', 4};
                 self.helpers.feedback.show(feedbackArgs{:});
                 dotsTheScreen.blankScreen([0 0 0]);
             elseif trial.trialIndex == 61
-                feedbackStr = 'Practice with SOURCE hidden';
+                feedbackStr = 'Keep practicing, we will hide everything';
                 feedbackArgs = {'text', feedbackStr, 'showDuration', 4};
                 self.helpers.feedback.show(feedbackArgs{:});
                 dotsTheScreen.blankScreen([0 0 0]);
@@ -919,7 +919,10 @@ classdef topsTreeNodeTaskAudio2AFCCP < topsTreeNodeTask
             %
             trial    = self.getTrial();
             ensemble = self.helpers.stimulusEnsemble.theObject;
-            
+            for d = 1:6
+                % forcefully hide all visual objects
+                ensemble.setObjectProperty('isVisible', false, d)
+            end
             % ----- Get target locations
             %
             %  Determined relative to fp location
@@ -966,14 +969,14 @@ classdef topsTreeNodeTaskAudio2AFCCP < topsTreeNodeTask
                 if trial.source == 180
                     ensemble.setObjectProperty('fileNames', {'goldennote.png'}, 5);
                 else
-                    disp('right source and left sound')
+%                     disp('right source and left sound')
                     ensemble.setObjectProperty('fileNames', {'purplenote.png'}, 5);
                 end
             else
                 if trial.source == 180
                     ensemble.setObjectProperty('fileNames', {'goldennote.png'}, 6);
                 else
-                    disp('right source and right sound')
+%                     disp('right source and right sound')
                     ensemble.setObjectProperty('fileNames', {'purplenote.png'}, 6);
                 end
             end
@@ -1064,20 +1067,20 @@ classdef topsTreeNodeTaskAudio2AFCCP < topsTreeNodeTask
         end
         
         
-        function prepareTutorialStates(self)
-            trial = self.getTrial();
-            if trial.trialIndex < 40
-                self.stateMachine.editStateByName('showFixation', 'next', 'showSource');
-            else
-                self.stateMachine.editStateByName('showFixation', 'next', 'waitForChoiceFX');
-            end
-            self.trueSource = trial.source;
-        end
+%         function prepareTutorialStates(self)
+%             trial = self.getTrial();
+%             if trial.trialIndex < 40
+%                 self.stateMachine.editStateByName('showFixation', 'next', 'showSource');
+%             else
+%                 self.stateMachine.editStateByName('showFixation', 'next', 'waitForChoiceFX');
+%             end
+%             self.trueSource = trial.source;
+%         end
         
         function showTrueSource(self)
             if self.trueSource == 180
                 self.helpers.stimulusEnsemble.draw({{'colors', ...
-                    [1 0 0], 2}, {'isVisible', true, [2]}, {'isVisible', false, 4}},  self, 'sourceOn');
+                    [1 0 0], 2}, {'isVisible', true, 2}, {'isVisible', false, 4}},  self, 'sourceOn');
             else
                 self.helpers.stimulusEnsemble.draw({{'colors', ...
                     [0 0 1], 4}, {'isVisible', true, 4}, {'isVisible', false, 2}},  self, 'sourceOn');
@@ -1096,22 +1099,60 @@ classdef topsTreeNodeTaskAudio2AFCCP < topsTreeNodeTask
         end
         
         
-        function delayEntry(self)
+        function tutPredEntry(self)
+            self.flushEventsQueue();
             trial = self.getTrial();
-            % for now, only do something if within first 60 trials
-            % show true source in appropriate color
+            % if within first 40 trials, no subject's answer required
+            % show true source in appropriate color + fixation cross
             if trial.source == 180
                 sidx = 2;
+                thide = 4;
                 col = self.leftColor;
             else
                 sidx = 4;
+                thide = 2;
                 col = self.rightColor;
             end
-            if trial.trialIndex < 61  
+            if trial.trialIndex < 41  
                 self.helpers.stimulusEnsemble.draw( ...
                     { ...
-                    {'colors', col, sidx}, ...
-                    {'isVisible', true, sidx}, ...
+                    {'colors', col, sidx}, ...  % source in color
+                    {'colors', [1 1 1], 1}, ... % white fixation cross
+                    {'isVisible', true, [1, sidx]}, ...
+                    {'isVisible', false, thide}, ...
+                    }, ...
+                    self, 'fixationOn');
+            elseif trial.trialIndex > 40
+                 self.helpers.stimulusEnsemble.draw( ...
+                    { ...
+                    {'colors', [0 0 1], 1}, ... % blue fixation cross
+                    {'isVisible', true, 1}, ...
+                    {'isVisible', false, [2, 4]}, ... % hide sources
+                    }, ...
+                    self, 'fixationOn');  
+            end
+        end
+        
+        function delayEntry(self)
+            trial = self.getTrial();
+            % if within first 40 trials, no subject's answer required
+            % show true source in appropriate color + fixation cross
+            if trial.source == 180
+                sidx = 2;
+                thide = 4;
+                col = self.leftColor;
+            else
+                sidx = 4;
+                thide = 2;
+                col = self.rightColor;
+            end
+            if trial.trialIndex > 40
+                self.helpers.stimulusEnsemble.draw( ...
+                    { ...
+                    {'colors', col, sidx}, ...  % source in color
+                    {'colors', [1 1 1], 1}, ... % white fixation cross
+                    {'isVisible', true, [1, sidx]}, ...
+                    {'isVisible', false, thide}, ...
                     }, ...
                     self, 'showTrueSource');
             end
@@ -1123,14 +1164,17 @@ classdef topsTreeNodeTaskAudio2AFCCP < topsTreeNodeTask
             % show true sound in appropriate color
             if trial.direction == 180
                 midx = 5;
+                thide = 6;
             else
                 midx = 6;
+                thide = 5;
             end
-            if trial.trialIndex < 61  
+            if trial.trialIndex < 81  
 %                 disp('draw is called for image...')
                 self.helpers.stimulusEnsemble.draw( ...
                     { ...
                     {'isVisible', true, midx}, ...
+                    {'isVisible', false, thide}, ...
                     }, ...
                     self, 'showTrueSound');
             end
@@ -1157,21 +1201,37 @@ classdef topsTreeNodeTaskAudio2AFCCP < topsTreeNodeTask
                 {'colors', [0 0 1], 1}, {'colors', [1 1 1], [2,4]}, {'isVisible', true, [1, 2, 4]}, {'isVisible', false, [3 5 6]} ...
                 },  self, 'fixationOn'};
             
+            % first display in prediction tutorial
+            tutent = {@tutPredEntry, self};
             
             % entry and exit function for delay state
             delent  = {@delayEntry, self};
             delex = {@delayExit, self};
             
+            % only show blue fixation cross
             shfxb  = {@draw, self.helpers.stimulusEnsemble, {{'colors', ...
-                [0 0 1], 1}, {'isVisible', true, 1}, {'isVisible', false, [2 3 4]}},  self, 'fixationBlue'};
-            shfxw  = {@draw, self.helpers.stimulusEnsemble, {{'colors', ...
-                [1 1 1], 1}, {'isVisible', true, 1}, {'isVisible', false, [2 3 4]}},  self, 'fixationBlue'};
+                [0 0 1], 1}, {'isVisible', true, 1}, {'isVisible', false, [2 3 4 5 6]}},  self, 'fixationBlue'};
+            
+%             shfxw  = {@draw, self.helpers.stimulusEnsemble, {{'colors', ...
+%                 [1 1 1], 1}, {'isVisible', true, 1}, {'isVisible', false, [2 3 4]}},  self, 'fixationBlue'};
+            
             showfb  = {@showFeedback, self};
             plays1 = {@play, self.helpers.audStimulusEnsemble.theObject, self, 'sound1On', 'sound1Off'};
             plays2 = {@play, self.helpers.audStimulusEnsemble.theObject, self, 'sound2On', 'sound2Off'};
-            hided   = {@draw,self.helpers.stimulusEnsemble, {[], [1,2,4]}, self, 'fixationOff'};
+            
+            % hide everything but smiley face for feedback
+            hided   = {@draw,self.helpers.stimulusEnsemble, {[], [1,2,4,5,6]}, self, 'fixationOff'};
+            
+            % possibly shorten bip duration if we are in a catch trial
+            % NOTE: On trials that don't require a subject's answer, this
+            % function sets the trial as "complete"
             mdfs = {@modifySound, self};
+            
+            % reset sound to usual duration, once catch sound has been
+            % emitted
             rsts = {@resetSound, self};
+            
+            
             pdbr = {@setNextState, self, 'isCatch', 'playSound', 'catchSound', 'blank'};
             
             % if no response is expected from subject, set next state of
@@ -1199,7 +1259,7 @@ classdef topsTreeNodeTaskAudio2AFCCP < topsTreeNodeTask
             skcheck = {@skipTrial, self};
             
             
-            ppst = {@prepareTutorialStates, self};
+%             ppst = {@prepareTutorialStates, self};
             showsc  = {@showTrueSource, self};
             
             % skip whole task
@@ -1209,7 +1269,9 @@ classdef topsTreeNodeTaskAudio2AFCCP < topsTreeNodeTask
             pseoff = {@pauseOff, self};
             psechk = {@pauseScreen, self, false};
             
+            % pause screen in-between parts of prediction tutorial
             bscreen = {@tutorialScreen, self};
+            
             % ---- Timing variables, read directly from the timing property struct
             %
             t = self.timing;
@@ -1240,7 +1302,7 @@ classdef topsTreeNodeTaskAudio2AFCCP < topsTreeNodeTask
                         'midBlock'          pseon    psechk   1000000               pseoff       ''               ; ...
                         'showFixation'      shfxb    {}       t.preStim             gwts       'waitForChoiceFX'       ; ...
                         'waitForChoiceFX'   {}       chkuic   t.choiceTimeout       pdbr       'blank'           ; ...
-                        'delay'             shfxw    {}       1.5                   {}         'playSound'       ; ...
+                        'delay'             showfx   {}       1.5                   {}         'playSound'       ; ...
                         'playSound'         plays1   {}       0                     mdfs       ''                ; ...
                         'blank'             hided    {}       0.2                   {}         'showFeedback'    ; ...
                         'showFeedback'      showfb   {}       t.showFeedback        blanks     'skipCheck'       ; ...
@@ -1254,13 +1316,13 @@ classdef topsTreeNodeTaskAudio2AFCCP < topsTreeNodeTask
                         'name'              'entry'  'input'  'timeout'             'exit'     'next'            ; ...
                         'skipCheck'         {}       skcheck  0.1                   {}         'miniblock'       ; ...
                         'miniblock'         bscreen   {}      0                     skresp     'showFixation'    ; ...
-                        'showFixation'      showfx    {}      t.preStim             gwts       ''       ; ...
+                        'showFixation'      tutent    {}      t.preStim             gwts       ''       ; ...
                         'waitForChoiceFX'   {}       chkuic   t.choiceTimeout       pdbr       'blank'           ; ...
                         'delay'             delent   {}       1.5                   delex      'playSound'       ; ...
                         'playSound'         plays1   {}       0                     mdfs       ''                ; ...
                         'blank'             hided    {}       0.2                   {}         'showFeedback'    ; ...
-                        'showFeedback'      showfb   {}       t.showFeedback        blanks     'skipCheck'       ; ...
-                        'blankNoFeedback'   {}       {}       0                     blanks     'skipCheck'       ; ...
+                        'showFeedback'      showfb   {}       t.showFeedback        blanks     'done'       ; ...
+                        'blankNoFeedback'   {}       {}       0                     blanks     'done'       ; ...
                         'done'              dnow     {}       t.interTrialInterval*.01 {}      ''             ; ...
                         'skipState'         xsm      {}       0                     {}         ''                ; ...
                         };

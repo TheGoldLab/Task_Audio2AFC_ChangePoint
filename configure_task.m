@@ -139,7 +139,7 @@ for ii = 1:2
     if ii == 1 && strcmp(type, 'rep')
         trialIter = 10; % tutorial report
     elseif ii == 1 && strcmp(type, 'pred')
-        trialIter = 40;  % tutorial prediction
+        trialIter = 80;  % tutorial prediction
     else
         trialIter = 205;  % task
         topNode.nodeData{'Settings'}{'showFeedback'} = 0;
