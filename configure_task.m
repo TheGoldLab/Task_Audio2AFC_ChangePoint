@@ -145,7 +145,25 @@ for ii = 1:2
         topNode.nodeData{'Settings'}{'showFeedback'} = 0;
         topNode.nodeData{'Settings'}{'showSmileyFace'} = 0;
     end
+    
     blockName = taskSpecs{1}{ii};
+  
+    if strcmp(blockName, 'TutPrediction')
+        % check whether block for current session is with high or low
+        % hazard rate
+        lowHblocks = {};
+        highHblocks = {};
+        for i = 1:4
+            lowHblocks{i} = ['Block00', num2str(i)];
+            highHblocks{i} = ['Block00', num2str(i+4)];
+        end
+        if ismember(taskSpecs{1}{2}, lowHblocks)
+            blockName = [blockName, 'Low'];
+        elseif ismember(taskSpecs{1}{2}, highHblocks)
+            blockName = [blockName, 'High'];
+        end
+    end
+    
     % Make list of properties to send
     args = {blockName, ...   
         'trialIterations',                  trialIter, ...
@@ -171,11 +189,12 @@ for ii = 1:2
     task.settings.subjectCode = topNode.nodeData{'Settings'}{'subjectCode'};
     task.settings.buttonBox = topNode.nodeData{'Settings'}{'buttonBox'};
     
-    trial_folder = [blockName, '/'];
+    
     % Special case of quest ... use output as coh/RT refs
 
     task.trialSettings.loadFromFile = true;
     task.trialSettings.numTrials = trialIter;
+    trial_folder = [blockName, '/'];
     task.trialSettings.csvFile = [trial_folder, blockName, '.csv'];
     task.trialSettings.jsonFile = [trial_folder, blockName, '_metadata.json'];
     task.setReportProperty(topNode.nodeData{'Settings'}{'isReport'})

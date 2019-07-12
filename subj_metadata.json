@@ -3,7 +3,7 @@
 		"seqType": "highFirst",
 		"session1": {
 			"trialFolder": "TutPrediction",
-			"sessionTag": "2019_07_11_14_28",
+			"sessionTag": "2019_07_12_09_07",
 			"TutReport": {
 				"type": "pred",
 				"completed": 0,
@@ -12,12 +12,12 @@
 			"Block005": {
 				"type": "pred",
 				"completed": 0,
-				"numTrials": 2
+				"numTrials": 0
 			}
 		},
 		"session2": {
 			"trialFolder": "TutPrediction",
-			"sessionTag": "2019_07_11_15_31",
+			"sessionTag": "2019_07_12_09_55",
 			"TutPrediction": {
 				"type": "pred",
 				"completed": 0,
@@ -26,8 +26,11 @@
 			"Block005": {
 				"type": "pred",
 				"completed": 0,
-				"numTrials": 7
+				"numTrials": 0
 			}
 		}
+	},
+	"HUPZACK": {
+		"seqType": "highFirst"
 	}
 }
