@@ -1,4 +1,5 @@
 function topnode = copy_audioGoldLab(callTbTb)
+clear mex; 
 if nargin < 1
     callTbTb = true;
 end
