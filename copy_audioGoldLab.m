@@ -1,12 +1,23 @@
-function copy_audioGoldLab(str)
-% run audio 2afc cp task
-% str should be one of 'tut_report', 'tut_prediction', 'report',
-% 'prediction'
-% Example:
-%  audioGoldLab('tut_report')
-if ismember(str, {'tut_report', 'tut_prediction', 'report', 'prediction'})
-    tbUseProject('Task_Audio2AFC_ChangePoint')
-    run_task(str)
-else
-    error('str arg should be one of "tut_report", "tut_prediction", "report", "prediction"')
+function topnode = copy_audioGoldLab(callTbTb)
+clear mex; 
+if nargin < 1
+    callTbTb = true;
+end
+if callTbTb
+    tbUseProject('Task_Audio2AFC_ChangePoint');
+end
+
+hashed_sc = getSubjectCode();
+
+% compute suggested block for current session
+[block, type] = suggestBlock(hashed_sc);
+
+if size(block,1) == 1
+    block=block';  % transpose for aesthetic purposes
+end
+fprintf(char(10))
+fprintf('About to run: %s + %s (%s)', block{1}, block{2}, type)
+fprintf(char(10))
+topnode = run_task('EMU', block, type, hashed_sc);
+
 end
