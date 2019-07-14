@@ -114,7 +114,7 @@ classdef topsTreeNodeTaskAudio2AFCCP < topsTreeNodeTask
             'fevalable',                  @dotsDrawableImages, ...
             'settings',                   struct( ...
             'y',                          4, ...
-            'fileNames',                  {{'smiley.jpg'}}, ...
+            'fileNames',                  {{'thumbsUp.jpg'}}, ...  % for error, use Oops.jpg
             'height',                     1)), ...
              ...  % 4 right target
             'targetRight',                struct( ...
@@ -793,11 +793,11 @@ classdef topsTreeNodeTaskAudio2AFCCP < topsTreeNodeTask
             
             % Display appropriate string
             if trial.trialIndex == 1
-                feedbackStr = 'Sounds generated from the LEFT SOURCE';
+                feedbackStr = 'Sounds generated from the GOLDEN SOURCE';
                 feedbackArgs = { ...
                     'text',  feedbackStr, 'showDuration', 4};
             elseif trial.trialIndex == 11
-                feedbackStr = 'Sounds generated from the RIGHT SOURCE';
+                feedbackStr = 'Sounds generated from the PURPLE SOURCE';
                 feedbackArgs = { ...
                     'text',  feedbackStr, 'showDuration', 4};
             elseif trial.trialIndex == 21
@@ -892,53 +892,60 @@ classdef topsTreeNodeTaskAudio2AFCCP < topsTreeNodeTask
             % --- Show trial feedback on the screen
             %
             if self.timing.showSmileyFace > 0 && ~skipFb
-%                 self.helpers.feedback.show(feedbackArgs{:})
+                self.helpers.feedback.show(feedbackArgs{:})
                 
-                defaultY = 5;
+                
+%    %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+%    BELOW WAS AN ATTEMPT TO REFACTOR CODE FROM FEEDBACK HELPER
+%       NOT USEFUL AS IT STILL OVERRIDES STIMULUS DISPLAY
+%    %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+%                 defaultY = 5;
+% 
+%                 textArgs = access(feedbackArgs, 'text');
+%                 if ischar(textArgs)
+%                     textArgs = {{'string', textArgs, 'y', defaultY}, {}};
+%                 elseif iscell(textArgs)
+%                     if ischar(textArgs{1})
+%                         textArgs{1} = ['string', textArgs(1), 'y', defaultY+2];
+%                     end
+%                     if length(textArgs) == 2 && ischar(textArgs{2})
+%                         textArgs{2} = ['string', textArgs(2), 'y', defaultY-2];
+%                     end
+%                 end
+%                 for ii = 1:length(textArgs)
+%                     for jj = 1:2:length(textArgs{ii})-1
+%                         self.helpers.feedback.theObject.setObjectProperty(textArgs{ii}{jj}, textArgs{ii}{jj+1}, ii);
+%                     end
+%                     if ~isempty(textArgs{ii})
+%                         self.helpers.feedback.theObject.setObjectProperty('isVisible', true, ii);
+%                     end
+%                 end
+% 
+%                 if existImage
+%                     imageArgs = access(feedbackArgs, 'image');
+%                     if isnumeric(imageArgs)
+%                         imageArgs = {imageArgs, 'y', defaultY, 'isVisible', true};
+%                     else
+%                         imageArgs = [imageArgs, 'isVisible', true];
+%                     end
+%                     for ii = 2:2:length(imageArgs)-1
+%                         self.helpers.feedback.theObject.setObjectProperty(imageArgs{ii}, ...
+%                             imageArgs{ii+1}, self.helpers.feedback.numText+imageArgs{1});
+%                     end
+%                     self.helpers.feedback.theObject.callObjectMethod(@prepareToDrawInWindow);
+%                 end
+%                 
+%                 % Draw 'em, getting back timestamps
+%                 frameInfo = self.helpers.feedback.theObject.callObjectMethod(...
+%                     @dotsDrawable.drawFrame, {}, [], true);
+%    
+%                 % Wait
+%                 pause(self.timing.showSmileyFace);
+%    %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 
-                textArgs = access(feedbackArgs, 'text');
-                if ischar(textArgs)
-                    textArgs = {{'string', textArgs, 'y', defaultY}, {}};
-                elseif iscell(textArgs)
-                    if ischar(textArgs{1})
-                        textArgs{1} = ['string', textArgs(1), 'y', defaultY+2];
-                    end
-                    if length(textArgs) == 2 && ischar(textArgs{2})
-                        textArgs{2} = ['string', textArgs(2), 'y', defaultY-2];
-                    end
-                end
-                for ii = 1:length(textArgs)
-                    for jj = 1:2:length(textArgs{ii})-1
-                        self.helpers.feedback.theObject.setObjectProperty(textArgs{ii}{jj}, textArgs{ii}{jj+1}, ii);
-                    end
-                    if ~isempty(textArgs{ii})
-                        self.helpers.feedback.theObject.setObjectProperty('isVisible', true, ii);
-                    end
-                end
 
-                if existImage
-                    imageArgs = access(feedbackArgs, 'image');
-                    if isnumeric(imageArgs)
-                        imageArgs = {imageArgs, 'y', defaultY, 'isVisible', true};
-                    else
-                        imageArgs = [imageArgs, 'isVisible', true];
-                    end
-                    for ii = 2:2:length(imageArgs)-1
-                        self.theObject.setObjectProperty(imageArgs{ii}, ...
-                            imageArgs{ii+1}, self.numText+imageArgs{1});
-                    end
-                    self.helpers.feedback.theObject.callObjectMethod(@prepareToDrawInWindow);
-                end
-                
-                % Draw 'em, getting back timestamps
-                frameInfo = self.helpers.feedback.theObject.callObjectMethod(...
-                    @dotsDrawable.drawFrame, {}, [], true);
-   
-                % Wait
-                pause(self.timing.showSmileyFace);
-                
             end
-            self.helpers.feedback.theObject.setObjectProperty('isVisible', false);
+%             self.helpers.feedback.theObject.setObjectProperty('isVisible', false);
             dotsTheScreen.blankScreen([0 0 0]);
         end
         

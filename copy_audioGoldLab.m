@@ -4,7 +4,7 @@ if nargin < 1
     callTbTb = true;
 end
 if callTbTb
-    tbUseProject('Task_Audio2AFC_ChangePoint')
+    tbUseProject('Task_Audio2AFC_ChangePoint');
 end
 
 hashed_sc = getSubjectCode();
