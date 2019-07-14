@@ -65,6 +65,7 @@ classdef topsTreeNodeTaskAudio2AFCCP < topsTreeNodeTask
             'randSeedBase', ...
             'unselectedTargetOff', ...
             'showTrueSource', ...
+            'showSelection', ...
             'showTrueSound', ...
             'fixationOn', ...
             'fixationBlue', ...
@@ -112,8 +113,9 @@ classdef topsTreeNodeTaskAudio2AFCCP < topsTreeNodeTask
             'smiley',                     struct(  ...
             'fevalable',                  @dotsDrawableImages, ...
             'settings',                   struct( ...
+            'y',                          4, ...
             'fileNames',                  {{'smiley.jpg'}}, ...
-            'height',                     2)), ...
+            'height',                     1)), ...
              ...  % 4 right target
             'targetRight',                struct( ...
             'fevalable',                  @dotsDrawableTargets, ...
@@ -132,7 +134,15 @@ classdef topsTreeNodeTaskAudio2AFCCP < topsTreeNodeTask
             'fevalable',                  @dotsDrawableImages, ...
             'settings',                   struct( ...
             'fileNames',                  {{'smiley.jpg'}}, ...
-            'height',                     1.4))));
+            'height',                     1.4)), ...
+            ...   % 7 square that surrounds selected target
+            'selectionSquare',           struct( ...
+            'fevalable',                  @dotsDrawableTargets, ...
+            'settings',                   struct( ...
+            'nSides',                     4,              ...
+            'yCenter',                    [0,0,-1.5,1.5], ...
+            'width',                      [.1 .1 4.25 4.25],       ... % first two are vertical sides of square, last two are horizontal sides of square
+            'height',                     [4.25 4.25 .1 .1]))));
         
         % Playables settings
         playable = struct( ...
@@ -161,7 +171,8 @@ classdef topsTreeNodeTaskAudio2AFCCP < topsTreeNodeTask
         metadatafile = 'subj_metadata.json';
         midblock = 103;  % should be 103 for 205-trial blocks, in any case, should be larger than the longest tutorial
         hasReachedMidBlock = false;
-                
+        halfDelay = .75; % seconds. This is half of the delay period
+        
         % left color
         leftColor = [255 160 0] / 255;     % golden/orange
         rightColor = [191 116 255] / 255;  % purple
@@ -779,32 +790,50 @@ classdef topsTreeNodeTaskAudio2AFCCP < topsTreeNodeTask
         function tutorialScreen(self)
             % Get current task/trial
             trial = self.getTrial();
-            % Set up feedback based on outcome
+            
+            % Display appropriate string
             if trial.trialIndex == 1
                 feedbackStr = 'Sounds generated from the LEFT SOURCE';
                 feedbackArgs = { ...
                     'text',  feedbackStr, 'showDuration', 4};
-                self.helpers.feedback.show(feedbackArgs{:});
-                dotsTheScreen.blankScreen([0 0 0]);
             elseif trial.trialIndex == 11
                 feedbackStr = 'Sounds generated from the RIGHT SOURCE';
                 feedbackArgs = { ...
                     'text',  feedbackStr, 'showDuration', 4};
-                self.helpers.feedback.show(feedbackArgs{:});
-                dotsTheScreen.blankScreen([0 0 0]);
             elseif trial.trialIndex == 21
-                feedbackStr = 'Example of real sequence of sources';
-                feedbackArgs = {'text', feedbackStr, 'showDuration', 4};
-                self.helpers.feedback.show(feedbackArgs{:});
-                dotsTheScreen.blankScreen([0 0 0]);
+                feedbackStr = {'Example of a real sequence of sources', ...
+                    '(press any button to start)'};
+                feedbackArgs = {'text', feedbackStr, 'showDuration', .1, ...
+                    'blank', false};
             elseif trial.trialIndex == 41
-                feedbackStr = 'Now predict the SOURCE as best as you can';
-                feedbackArgs = {'text', feedbackStr, 'showDuration', 4};
-                self.helpers.feedback.show(feedbackArgs{:});
-                dotsTheScreen.blankScreen([0 0 0]);
+                feedbackStr = {'Now predict the SOURCE as best as you can', ...
+                    '(press any button to start)'};
+                feedbackArgs = {'text', feedbackStr, 'showDuration', .1, ...
+                    'blank', false};
             elseif trial.trialIndex == 61
-                feedbackStr = 'Keep practicing, we will hide everything';
-                feedbackArgs = {'text', feedbackStr, 'showDuration', 4};
+                feedbackStr = {'Keep practicing, we will hide everything', ...
+                    '(press any button to start)'};
+                feedbackArgs = {'text', feedbackStr, 'showDuration', .1, ...
+                    'blank', false};
+            end
+            if ismember(trial.trialIndex, [21,41,61])
+                % ---- Activate event and check for it
+                %
+                events = {'choseLeft', 'choseRight'};
+                self.helpers.reader.theObject.setEventsActiveFlag(events)
+                eventName = self.helpers.reader.readEvent(events);
+                
+                % Nothing... keep checking
+                while isempty(eventName)
+                    self.helpers.feedback.show(feedbackArgs{:});
+                    eventName = self.helpers.reader.readEvent(events);
+                end
+                
+%                 pause(.5)
+%                 self.flushEventsQueue()
+%                 
+                dotsTheScreen.blankScreen([0 0 0]);
+            elseif ismember(trial.trialIndex, [1,11])
                 self.helpers.feedback.show(feedbackArgs{:});
                 dotsTheScreen.blankScreen([0 0 0]);
             end
@@ -833,7 +862,6 @@ classdef topsTreeNodeTaskAudio2AFCCP < topsTreeNodeTask
                     'text',  [feedbackStr RTstr], ...
                     'image', imageIndex, ...
                     'eventTag', 'feedbackOn'};
-                feedbackColor = [0 0.6 0];
 
             elseif trial.correct == 0
                 feedbackStr = 'Error';
@@ -841,12 +869,10 @@ classdef topsTreeNodeTaskAudio2AFCCP < topsTreeNodeTask
                     'text',  [feedbackStr RTstr], ...
                     'image', self.settings.errorImageIndex, ...
                     'eventTag', 'feedbackOn'};
-                feedbackColor = [.9 0 0];
             else
                 feedbackStr = 'No choice';
                 feedbackArgs = {'text', 'No choice, please try again.', ...
                     'eventTag', 'feedbackOn'};
-                feedbackColor = [0 0 0];
             end
             
             % --- Show trial feedback in GUI/text window
@@ -855,18 +881,61 @@ classdef topsTreeNodeTaskAudio2AFCCP < topsTreeNodeTask
                 sprintf('Trial %d/%d, dir=%d: %s, RT=%.2f', ...
                 self.trialCount, numel(self.trialData), ...
                 trial.direction, feedbackStr, trial.RT);
-%             self.updateStatus(2); % just update the second one
+            %             self.updateStatus(2); % just update the second one
             
-           
+            
             skipFb = false;
-            
-           
+
             % --- Show trial feedback on the screen
             %
             if self.timing.showSmileyFace > 0 && ~skipFb
-                dotsTheScreen.blankScreen(feedbackColor);
-                self.helpers.feedback.show(feedbackArgs{:});
+%                 self.helpers.feedback.show(feedbackArgs{:})
+                
+                defaultY = 5;
+
+                textArgs = access(feedbackArgs, 'text');
+                if ischar(textArgs)
+                    textArgs = {{'string', textArgs, 'y', defaultY}, {}};
+                elseif iscell(textArgs)
+                    if ischar(textArgs{1})
+                        textArgs{1} = ['string', textArgs(1), 'y', defaultY+2];
+                    end
+                    if length(textArgs) == 2 && ischar(textArgs{2})
+                        textArgs{2} = ['string', textArgs(2), 'y', defaultY-2];
+                    end
+                end
+                for ii = 1:length(textArgs)
+                    for jj = 1:2:length(textArgs{ii})-1
+                        self.helpers.feedback.theObject.setObjectProperty(textArgs{ii}{jj}, textArgs{ii}{jj+1}, ii);
+                    end
+                    if ~isempty(textArgs{ii})
+                        self.helpers.feedback.theObject.setObjectProperty('isVisible', true, ii);
+                    end
+                end
+
+                if ismember('image', feedbackArgs, 'image')
+                    imageArgs = access(feedbackArgs, 'image');
+                    if isnumeric(imageArgs)
+                        imageArgs = {imageArgs, 'y', defaultY, 'isVisible', true};
+                    else
+                        imageArgs = [imageArgs, 'isVisible', true];
+                    end
+                    for ii = 2:2:length(imageArgs)-1
+                        self.theObject.setObjectProperty(imageArgs{ii}, ...
+                            imageArgs{ii+1}, self.numText+imageArgs{1});
+                    end
+                    self.helpers.feedback.theObject.callObjectMethod(@prepareToDrawInWindow);
+                end
+                
+                % Draw 'em, getting back timestamps
+                frameInfo = self.helpers.feedback.theObject.callObjectMethod(...
+                    @dotsDrawable.drawFrame, {}, [], true);
+   
+                % Wait
+                pause(self.timing.showSmileyFace);
+                
             end
+            self.helpers.feedback.theObject.setObjectProperty('isVisible', false);
             dotsTheScreen.blankScreen([0 0 0]);
         end
         
@@ -919,7 +988,7 @@ classdef topsTreeNodeTaskAudio2AFCCP < topsTreeNodeTask
             %
             trial    = self.getTrial();
             ensemble = self.helpers.stimulusEnsemble.theObject;
-            for d = 1:6
+            for d = 1:7
                 % forcefully hide all visual objects
                 ensemble.setObjectProperty('isVisible', false, d)
             end
@@ -1134,6 +1203,8 @@ classdef topsTreeNodeTaskAudio2AFCCP < topsTreeNodeTask
         end
         
         function delayEntry(self)
+            % controls display at beginning of delay period
+            % only gets called in TutPrediction tasks
             trial = self.getTrial();
             % if within first 40 trials, no subject's answer required
             % show true source in appropriate color + fixation cross
@@ -1147,21 +1218,52 @@ classdef topsTreeNodeTaskAudio2AFCCP < topsTreeNodeTask
                 col = self.rightColor;
             end
             if trial.trialIndex > 40
+                self.stateMachine.editStateByName('delay', 'timeout', self.halfDelay);
+                
+                % set up appropriate coordinates for selection square
+                sqHalfWidth = 1.5; 
+                ensemble = self.helpers.stimulusEnsemble.theObject;
+                if trial.choice == 0  % subject picked left
+                    center = - self.settings.targetDistance;
+                else
+                    center = self.settings.targetDistance;
+                end
+                ensemble.setObjectProperty('xCenter', ...
+                    [center - sqHalfWidth, center + sqHalfWidth, ...
+                     center, center], 7); 
+                
+                % first display selection + turn cross white
+                
                 self.helpers.stimulusEnsemble.draw( ...
                     { ...
-                    {'colors', col, sidx}, ...  % source in color
-                    {'colors', [1 1 1], 1}, ... % white fixation cross
-                    {'isVisible', true, [1, sidx]}, ...
+                    {'colors', [1 1 1], [1,7]}, ... % white fixation cross + selection
+                    {'isVisible', true, [1, 7]}, ...
                     {'isVisible', false, thide}, ...
                     }, ...
-                    self, 'showTrueSource');
+                    self, 'showSelection');
+                
+                % wait a bit
+                pause(self.halfDelay)
+                
+                % display true source if below trial 61
+                if trial.trialIndex < 61
+                    self.helpers.stimulusEnsemble.draw( ...
+                        { ...
+                        {'colors', col, sidx}, ...  % source in color
+                        {'isVisible', true, sidx}, ...
+                        {'isVisible', false, thide}, ...
+                        }, ...
+                        self, 'showTrueSource');
+                end
+            else
+                self.stateMachine.editStateByName('delay', 'timeout', 2*self.halfDelay);
             end
         end
         
         function delayExit(self)
             trial = self.getTrial();
             % for now, only do something if within first 60 trials
-            % show true sound in appropriate color
+            % show true sound in appropriate color up to trial 60
             if trial.direction == 180
                 midx = 5;
                 thide = 6;
@@ -1169,7 +1271,7 @@ classdef topsTreeNodeTaskAudio2AFCCP < topsTreeNodeTask
                 midx = 6;
                 thide = 5;
             end
-            if trial.trialIndex < 81  
+            if trial.trialIndex < 61  
 %                 disp('draw is called for image...')
                 self.helpers.stimulusEnsemble.draw( ...
                     { ...
@@ -1194,11 +1296,11 @@ classdef topsTreeNodeTaskAudio2AFCCP < topsTreeNodeTask
             
             % show white fixation cross only
             showfx  = {@draw, self.helpers.stimulusEnsemble, {{'colors', ...
-                [1 1 1], 1}, {'isVisible', true, 1}, {'isVisible', false, [2 3 4 5 6]}},  self, 'fixationOn'};
+                [1 1 1], 1}, {'isVisible', true, 1}, {'isVisible', false, [2 3 4 5 6 7]}},  self, 'fixationOn'};
             
             % show fixation cross in blue and two targets in white
             showfxp  = {@draw, self.helpers.stimulusEnsemble, {...
-                {'colors', [0 0 1], 1}, {'colors', [1 1 1], [2,4]}, {'isVisible', true, [1, 2, 4]}, {'isVisible', false, [3 5 6]} ...
+                {'colors', [0 0 1], 1}, {'colors', [1 1 1], [2,4]}, {'isVisible', true, [1, 2, 4]}, {'isVisible', false, [3 5 6 7]} ...
                 },  self, 'fixationOn'};
             
             % first display in prediction tutorial
@@ -1210,7 +1312,7 @@ classdef topsTreeNodeTaskAudio2AFCCP < topsTreeNodeTask
             
             % only show blue fixation cross
             shfxb  = {@draw, self.helpers.stimulusEnsemble, {{'colors', ...
-                [0 0 1], 1}, {'isVisible', true, 1}, {'isVisible', false, [2 3 4 5 6]}},  self, 'fixationBlue'};
+                [0 0 1], 1}, {'isVisible', true, 1}, {'isVisible', false, [2 3 4 5 6 7]}},  self, 'fixationBlue'};
             
 %             shfxw  = {@draw, self.helpers.stimulusEnsemble, {{'colors', ...
 %                 [1 1 1], 1}, {'isVisible', true, 1}, {'isVisible', false, [2 3 4]}},  self, 'fixationBlue'};
@@ -1220,7 +1322,7 @@ classdef topsTreeNodeTaskAudio2AFCCP < topsTreeNodeTask
             plays2 = {@play, self.helpers.audStimulusEnsemble.theObject, self, 'sound2On', 'sound2Off'};
             
             % hide everything but smiley face for feedback
-            hided   = {@draw,self.helpers.stimulusEnsemble, {[], [1,2,4,5,6]}, self, 'fixationOff'};
+            hided   = {@draw,self.helpers.stimulusEnsemble, {[], [1,2,4,5,6,7]}, self, 'fixationOff'};
             
             % possibly shorten bip duration if we are in a catch trial
             % NOTE: On trials that don't require a subject's answer, this
@@ -1232,7 +1334,7 @@ classdef topsTreeNodeTaskAudio2AFCCP < topsTreeNodeTask
             rsts = {@resetSound, self};
             
             
-            pdbr = {@setNextState, self, 'isCatch', 'playSound', 'catchSound', 'blank'};
+            pdbr = {@setNextState, self, 'isCatch', 'playSound', 'catchSound', 'showFeedback'};
             
             % if no response is expected from subject, set next state of
             % showFixation to delay, otherwise, set it to waitForChoiceFX
@@ -1318,7 +1420,7 @@ classdef topsTreeNodeTaskAudio2AFCCP < topsTreeNodeTask
                         'miniblock'         bscreen   {}      0                     skresp     'showFixation'    ; ...
                         'showFixation'      tutent    {}      t.preStim             gwts       ''       ; ...
                         'waitForChoiceFX'   {}       chkuic   t.choiceTimeout       pdbr       'blank'           ; ...
-                        'delay'             delent   {}       1.5                   delex      'playSound'       ; ...
+                        'delay'             delent   {}       self.halfDelay        delex      'playSound'       ; ...
                         'playSound'         plays1   {}       0                     mdfs       ''                ; ...
                         'blank'             hided    {}       0.2                   {}         'showFeedback'    ; ...
                         'showFeedback'      showfb   {}       t.showFeedback        blanks     'done'       ; ...
