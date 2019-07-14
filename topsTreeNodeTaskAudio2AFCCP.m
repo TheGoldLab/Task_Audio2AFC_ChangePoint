@@ -862,6 +862,7 @@ classdef topsTreeNodeTaskAudio2AFCCP < topsTreeNodeTask
                     'text',  [feedbackStr RTstr], ...
                     'image', imageIndex, ...
                     'eventTag', 'feedbackOn'};
+                existImage = true;
 
             elseif trial.correct == 0
                 feedbackStr = 'Error';
@@ -869,10 +870,12 @@ classdef topsTreeNodeTaskAudio2AFCCP < topsTreeNodeTask
                     'text',  [feedbackStr RTstr], ...
                     'image', self.settings.errorImageIndex, ...
                     'eventTag', 'feedbackOn'};
+                existImage = true;
             else
                 feedbackStr = 'No choice';
                 feedbackArgs = {'text', 'No choice, please try again.', ...
                     'eventTag', 'feedbackOn'};
+                existImage = false;
             end
             
             % --- Show trial feedback in GUI/text window
@@ -913,7 +916,7 @@ classdef topsTreeNodeTaskAudio2AFCCP < topsTreeNodeTask
                     end
                 end
 
-                if ismember('image', feedbackArgs)
+                if existImage
                     imageArgs = access(feedbackArgs, 'image');
                     if isnumeric(imageArgs)
                         imageArgs = {imageArgs, 'y', defaultY, 'isVisible', true};
