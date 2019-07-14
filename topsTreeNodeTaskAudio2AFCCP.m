@@ -913,7 +913,7 @@ classdef topsTreeNodeTaskAudio2AFCCP < topsTreeNodeTask
                     end
                 end
 
-                if ismember('image', feedbackArgs, 'image')
+                if ismember('image', feedbackArgs)
                     imageArgs = access(feedbackArgs, 'image');
                     if isnumeric(imageArgs)
                         imageArgs = {imageArgs, 'y', defaultY, 'isVisible', true};
