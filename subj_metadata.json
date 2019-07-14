@@ -4,7 +4,7 @@
 		"session1": {
 			"trialFolder": "TutPrediction",
 			"sessionTag": "2019_07_12_09_07",
-			"TutReport": {
+			"TutPrediction": {
 				"type": "pred",
 				"completed": 0,
 				"numTrials": 0
@@ -16,9 +16,9 @@
 			}
 		},
 		"session2": {
-			"trialFolder": "TutPrediction",
-			"sessionTag": "2019_07_12_09_55",
-			"TutPrediction": {
+			"trialFolder": "TutPredictionHigh",
+			"sessionTag": "2019_07_14_11_49",
+			"TutPredictionHigh": {
 				"type": "pred",
 				"completed": 0,
 				"numTrials": 0
@@ -26,11 +26,36 @@
 			"Block005": {
 				"type": "pred",
 				"completed": 0,
+				"numTrials": 4
+			}
+		},
+		"session3": {
+			"trialFolder": "TutPredictionHigh",
+			"sessionTag": "2019_07_14_11_56",
+			"TutPredictionHigh": {
+				"type": "pred",
+				"completed": 0,
 				"numTrials": 0
+			},
+			"Block005": {
+				"type": "pred",
+				"completed": 0,
+				"numTrials": 6
+			}
+		},
+		"session4": {
+			"trialFolder": "TutPredictionHigh",
+			"sessionTag": "2019_07_14_12_05",
+			"TutPredictionHigh": {
+				"type": "pred",
+				"completed": 0,
+				"numTrials": 0
+			},
+			"Block005": {
+				"type": "pred",
+				"completed": 0,
+				"numTrials": 6
 			}
 		}
-	},
-	"HUPZACK": {
-		"seqType": "highFirst"
 	}
 }

@@ -113,9 +113,10 @@ classdef topsTreeNodeTaskAudio2AFCCP < topsTreeNodeTask
             'smiley',                     struct(  ...
             'fevalable',                  @dotsDrawableImages, ...
             'settings',                   struct( ...
-            'y',                          4, ...
-            'fileNames',                  {{'thumbsUp.jpg'}}, ...  % for error, use Oops.jpg
-            'height',                     1)), ...
+            'y',                          8, ...
+            'x',                          0, ...
+            'fileNames',                  {{'thumbsUp.jpg'}} ...  % for error, use Oops.jpg
+            )), ...
              ...  % 4 right target
             'targetRight',                struct( ...
             'fevalable',                  @dotsDrawableTargets, ...
@@ -241,7 +242,7 @@ classdef topsTreeNodeTaskAudio2AFCCP < topsTreeNodeTask
             else
                
                 if self.taskID == 1
-                    blockString = 'Tutorial block';
+                    blockString = 'Tutorial';
                 else
                     blockString = 'Task block';
                 end
@@ -626,8 +627,8 @@ classdef topsTreeNodeTaskAudio2AFCCP < topsTreeNodeTask
                 
                 self.helpers.stimulusEnsemble.draw({[], 1}, self, 'fixationOff');
                 self.helpers.feedback.show('text', ...
-                    {'You answered too soon.', ...
-                    'Please wait until cross turns blue.'}, ...
+                    {'You answered too soon', ...
+                    'Please wait until cross turns blue'}, ...
                     'showDuration', 4, ...
                     'blank', true);
             else
@@ -819,6 +820,9 @@ classdef topsTreeNodeTaskAudio2AFCCP < topsTreeNodeTask
             if ismember(trial.trialIndex, [21,41,61])
                 % ---- Activate event and check for it
                 %
+                pause(.5)
+                self.flushEventsQueue()
+                
                 events = {'choseLeft', 'choseRight'};
                 self.helpers.reader.theObject.setEventsActiveFlag(events)
                 eventName = self.helpers.reader.readEvent(events);
@@ -837,6 +841,7 @@ classdef topsTreeNodeTaskAudio2AFCCP < topsTreeNodeTask
                 self.helpers.feedback.show(feedbackArgs{:});
                 dotsTheScreen.blankScreen([0 0 0]);
             end
+            self.flushEventsQueue();  % somehow this doesn't work!
         end
         
         
@@ -846,44 +851,35 @@ classdef topsTreeNodeTaskAudio2AFCCP < topsTreeNodeTask
             
             % Get current task/trial
             trial = self.getTrial();
-            
+            ensemble = self.helpers.stimulusEnsemble.theObject;
             if trial.catchChoiceMissing == 1
                 trial.correct = 0;
             end
             
-            %  Check for RT feedback
-            RTstr = '';
-            imageIndex = self.settings.correctImageIndex;
+            useFB = false;
             
             % Set up feedback based on outcome
             if trial.correct == 1
-                feedbackStr = 'Correct';
-                feedbackArgs = { ...
-                    'text',  [feedbackStr RTstr], ...
-                    'image', imageIndex, ...
-                    'eventTag', 'feedbackOn'};
-                existImage = true;
-
+                ensemble.setObjectProperty('fileNames', {'thumbsUp.jpg'}, 3);
+                feedbackStr = 'correct';
             elseif trial.correct == 0
-                feedbackStr = 'Error';
-                feedbackArgs = { ...
-                    'text',  [feedbackStr RTstr], ...
-                    'image', self.settings.errorImageIndex, ...
-                    'eventTag', 'feedbackOn'};
-                existImage = true;
+                ensemble.setObjectProperty('fileNames', {'Oops.jpg'}, 3);
+                feedbackStr = 'wrong';
             else
                 feedbackStr = 'No choice';
                 feedbackArgs = {'text', 'No choice, please try again.', ...
                     'eventTag', 'feedbackOn'};
-                existImage = false;
+                
+                useFB = true;
+
             end
             
             % --- Show trial feedback in GUI/text window
             %
             self.statusStrings{2} = ...
-                sprintf('Trial %d/%d, dir=%d: %s, RT=%.2f', ...
+                sprintf('Trial %d/%d, dir=%d: %s', ...
                 self.trialCount, numel(self.trialData), ...
-                trial.direction, feedbackStr, trial.RT);
+                trial.direction, feedbackStr);
             %             self.updateStatus(2); % just update the second one
             
             
@@ -892,61 +888,22 @@ classdef topsTreeNodeTaskAudio2AFCCP < topsTreeNodeTask
             % --- Show trial feedback on the screen
             %
             if self.timing.showSmileyFace > 0 && ~skipFb
-                self.helpers.feedback.show(feedbackArgs{:})
-                
-                
-%    %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
-%    BELOW WAS AN ATTEMPT TO REFACTOR CODE FROM FEEDBACK HELPER
-%       NOT USEFUL AS IT STILL OVERRIDES STIMULUS DISPLAY
-%    %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
-%                 defaultY = 5;
-% 
-%                 textArgs = access(feedbackArgs, 'text');
-%                 if ischar(textArgs)
-%                     textArgs = {{'string', textArgs, 'y', defaultY}, {}};
-%                 elseif iscell(textArgs)
-%                     if ischar(textArgs{1})
-%                         textArgs{1} = ['string', textArgs(1), 'y', defaultY+2];
-%                     end
-%                     if length(textArgs) == 2 && ischar(textArgs{2})
-%                         textArgs{2} = ['string', textArgs(2), 'y', defaultY-2];
-%                     end
-%                 end
-%                 for ii = 1:length(textArgs)
-%                     for jj = 1:2:length(textArgs{ii})-1
-%                         self.helpers.feedback.theObject.setObjectProperty(textArgs{ii}{jj}, textArgs{ii}{jj+1}, ii);
-%                     end
-%                     if ~isempty(textArgs{ii})
-%                         self.helpers.feedback.theObject.setObjectProperty('isVisible', true, ii);
-%                     end
-%                 end
-% 
-%                 if existImage
-%                     imageArgs = access(feedbackArgs, 'image');
-%                     if isnumeric(imageArgs)
-%                         imageArgs = {imageArgs, 'y', defaultY, 'isVisible', true};
-%                     else
-%                         imageArgs = [imageArgs, 'isVisible', true];
-%                     end
-%                     for ii = 2:2:length(imageArgs)-1
-%                         self.helpers.feedback.theObject.setObjectProperty(imageArgs{ii}, ...
-%                             imageArgs{ii+1}, self.helpers.feedback.numText+imageArgs{1});
-%                     end
-%                     self.helpers.feedback.theObject.callObjectMethod(@prepareToDrawInWindow);
-%                 end
-%                 
-%                 % Draw 'em, getting back timestamps
-%                 frameInfo = self.helpers.feedback.theObject.callObjectMethod(...
-%                     @dotsDrawable.drawFrame, {}, [], true);
-%    
-%                 % Wait
-%                 pause(self.timing.showSmileyFace);
-%    %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
-
-
+                if useFB
+                    self.helpers.feedback.show(feedbackArgs{:})
+                else
+                    if (trial.trialIndex) > 40 && (trial.trialIndex < 61)
+                        pause(.5)
+                    end
+                    ensemble.callObjectMethod(@prepareToDrawInWindow);
+                    self.helpers.stimulusEnsemble.draw( ...
+                    { ...
+                    {'isVisible', true, 3}, ...
+                    }, ...
+                    self, 'feedbackOn');  
+                end
             end
-%             self.helpers.feedback.theObject.setObjectProperty('isVisible', false);
-            dotsTheScreen.blankScreen([0 0 0]);
+
+%             dotsTheScreen.blankScreen([0 0 0]);
         end
         
         function pauseOn(self)
@@ -1034,14 +991,14 @@ classdef topsTreeNodeTaskAudio2AFCCP < topsTreeNodeTask
             trial.randSeedBase = randi(9999);
             self.setTrial(trial);
             
-            % ---- Possibly update smiley face to location of correct target
-            %
-            if self.timing.showSmileyFace > 0
-                
-                % Set x,y
-                ensemble.setObjectProperty('x', fpX + sign(cosd(trial.direction))*td, 3);
-                ensemble.setObjectProperty('y', fpY, 3);
-            end
+%             % ---- Possibly update smiley face to location of correct target
+%             %
+%             if self.timing.showSmileyFace > 0
+%                 
+%                 % Set x,y
+%                 ensemble.setObjectProperty('x', fpX + sign(cosd(trial.direction))*td, 3);
+%                 ensemble.setObjectProperty('y', fpY, 3);
+%             end
             
             % assign correct file for music notes
             if trial.direction == 180
@@ -1401,7 +1358,7 @@ classdef topsTreeNodeTaskAudio2AFCCP < topsTreeNodeTask
                     'catchSound'        plays2   {}       0                     rsts       'waitForChoiceFX' ; ...
                     'waitForChoiceFX'   shfxb    chkuic   t.choiceTimeout       {}         'blank'           ; ...
                     'blank'             hided    {}       0.2                   {}         'showFeedback'    ; ...
-                    'showFeedback'      showfb   {}       t.showFeedback        blanks     'skipCheck'       ; ...
+                    'showFeedback'      showfb   {}       t.showFeedback        {}         'skipCheck'       ; ...
                     'blankNoFeedback'   {}       {}       0                     blanks     'skipCheck'       ; ...
                     'skipCheck'         {}       skcheck  t.interTrialInterval*.99 {}      'done'         ; ...
                     'done'              dnow     {}       t.interTrialInterval*.01 {}      ''             ; ...
@@ -1417,7 +1374,7 @@ classdef topsTreeNodeTaskAudio2AFCCP < topsTreeNodeTask
                         'delay'             showfx   {}       1.5                   {}         'playSound'       ; ...
                         'playSound'         plays1   {}       0                     mdfs       ''                ; ...
                         'blank'             hided    {}       0.2                   {}         'showFeedback'    ; ...
-                        'showFeedback'      showfb   {}       t.showFeedback        blanks     'skipCheck'       ; ...
+                        'showFeedback'      showfb   {}       t.showFeedback        {}         'skipCheck'       ; ...
                         'blankNoFeedback'   {}       {}       0                     blanks     'skipCheck'       ; ...
                         'skipCheck'         {}       skcheck  t.interTrialInterval*.99 {}      'done'         ; ...
                         'done'              dnow     {}       t.interTrialInterval*.01 {}      ''             ; ...
@@ -1433,7 +1390,7 @@ classdef topsTreeNodeTaskAudio2AFCCP < topsTreeNodeTask
                         'delay'             delent   {}       self.halfDelay        delex      'playSound'       ; ...
                         'playSound'         plays1   {}       0                     mdfs       ''                ; ...
                         'blank'             hided    {}       0.2                   {}         'showFeedback'    ; ...
-                        'showFeedback'      showfb   {}       t.showFeedback        blanks     'done'       ; ...
+                        'showFeedback'      showfb   {}       3*t.showFeedback      {}         'done'       ; ...
                         'blankNoFeedback'   {}       {}       0                     blanks     'done'       ; ...
                         'done'              dnow     {}       t.interTrialInterval*.01 {}      ''             ; ...
                         'skipState'         xsm      {}       0                     {}         ''                ; ...
