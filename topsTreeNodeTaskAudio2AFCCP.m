@@ -420,6 +420,12 @@ classdef topsTreeNodeTaskAudio2AFCCP < topsTreeNodeTask
                             elseif strcmp(eventName, 'KeyboardSlash')
                                 eventName = 'choseRight';
                             end
+                        elseif strcmp(self.settings.buttonBox, 'GoldOnEMUlaptop')
+                            if strcmp(eventName, 'KeyboardD')
+                                eventName = 'choseLeft';
+                            elseif strcmp(eventName, 'KeyboardK')
+                                eventName = 'choseRight';
+                            end
                         end
                         readableObj.defineEvent(eventName, 'component', IDs(ii));
                     catch

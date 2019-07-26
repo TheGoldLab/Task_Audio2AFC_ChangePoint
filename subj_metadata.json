@@ -1,2 +1,47 @@
 {
+	"HUPtestaer": {
+		"seqType": "highFirst",
+		"session1": {
+			"trialFolder": "TutReport",
+			"sessionTag": "2019_07_26_14_44",
+			"TutReport": {
+				"type": "rep",
+				"completed": 1,
+				"numTrials": 10
+			},
+			"Block005": {
+				"type": "rep",
+				"completed": 1,
+				"numTrials": 0
+			}
+		},
+		"session2": {
+			"trialFolder": "TutPredictionHigh",
+			"sessionTag": "2019_07_26_14_47",
+			"TutPredictionHigh": {
+				"type": "pred",
+				"completed": 0,
+				"numTrials": 0
+			},
+			"Block005": {
+				"type": "pred",
+				"completed": 0,
+				"numTrials": 0
+			}
+		},
+		"session3": {
+			"trialFolder": "TutPredictionHigh",
+			"sessionTag": "2019_07_26_14_49",
+			"TutPredictionHigh": {
+				"type": "pred",
+				"completed": 0,
+				"numTrials": 0
+			},
+			"Block005": {
+				"type": "pred",
+				"completed": 0,
+				"numTrials": 0
+			}
+		}
+	}
 }
