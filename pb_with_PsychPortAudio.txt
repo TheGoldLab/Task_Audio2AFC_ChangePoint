@@ -83,4 +83,4 @@ The exact error message of the linker was: Invalid MEX-file '/Users/adrian/Docum
 
 
 Error using InitializePsychSound (line 106)
-Failed to load PsychPortAudio driver.
+Failed to load PsychPortAudio driver.   
