@@ -18,6 +18,7 @@ end
 fprintf(char(10))
 fprintf('About to run: %s + %s (%s)', block{1}, block{2}, type)
 fprintf(char(10))
-topnode = run_task('EMU', block, type, hashed_sc);
+pause(5)
+topnode = run_task('office', block, type, hashed_sc);
 
 end

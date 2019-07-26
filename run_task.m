@@ -45,7 +45,7 @@ switch location
             'displayIndex',         1, ... % 0=small, 1=main, 2=other screen
             'remoteDrawing',        false, ...
             'sendTTLs',             false, ...
-            'buttonBox',            'Gold'
+            'buttonBox',            'Gold'  % options are Gold, EMU and GoldOnEMUlaptop
             };
 end
 
